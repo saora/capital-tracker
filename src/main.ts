@@ -1,3 +1,4 @@
+
 import './styles/tokens.css';
 import './styles/reset.css';
 import './styles/global.css';
@@ -39,13 +40,13 @@ let investmentData: InvestmentSheetsData | null = null;
 let isConnecting = false;
 let connectionError = '';
 
-const validPeriods: PerformancePeriod[] = [
-  '1W',
-  '1M',
-  '3M',
-  '1Y',
-  'ALL',
-];
+let touchStartY: number | null = null;
+let pullDistance = 0;
+let pullTracking = false;
+
+const PULL_THRESHOLD = 75;
+
+const validPeriods: PerformancePeriod[] = ['1W', '1M', '3M', '1Y', 'ALL'];
 
 const validRoutes: AppRoute[] = [
   'dashboard',
@@ -68,35 +69,32 @@ function escapeHtml(value: string): string {
   });
 }
 
-function renderConnectionPanel(): string {
-  const connected = investmentData !== null;
+function renderRefreshIndicator(): string {
+  if (!isConnecting && !connectionError) {
+    return '';
+  }
 
-  const status = isConnecting
-    ? 'Conectando con Google Sheets…'
-    : connected
-      ? 'Conectado · Datos de Google Sheets'
-      : 'Conecta tu hoja para cargar tu portafolio real.';
-
-  const errorHtml = connectionError
-    ? `<p class="google-connection__error" role="alert">${escapeHtml(connectionError)}</p>`
-    : '';
+  if (connectionError) {
+    return `
+      <div class="pull-to-refresh-indicator is-error" role="alert">
+        <span class="pull-to-refresh__label">
+          ${escapeHtml(connectionError)}
+        </span>
+      </div>
+    `;
+  }
 
   return `
-    <section class="google-connection card" aria-label="Conexión con Google Sheets">
-      <div class="google-connection__content">
-        <p class="text-secondary">Fuente de datos</p>
-        <p class="google-connection__status" role="status">${status}</p>
-        ${errorHtml}
-      </div>
-      <button
-        class="google-connection__button"
-        type="button"
-        data-connect-google
-        ${isConnecting ? 'disabled' : ''}
-      >
-        ${isConnecting ? 'Conectando…' : connected ? 'Actualizar datos' : 'Conectar Google Sheets'}
-      </button>
-    </section>
+    <div
+      class="pull-to-refresh-indicator is-refreshing"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="pull-to-refresh__spinner" aria-hidden="true"></span>
+      <span class="pull-to-refresh__label">
+        ${investmentData ? 'Actualizando datos...' : 'Cargando tu portafolio...'}
+      </span>
+    </div>
   `;
 }
 
@@ -122,7 +120,7 @@ function renderPage(): void {
   }
 
   app.innerHTML = `
-    ${renderConnectionPanel()}
+    ${renderRefreshIndicator()}
     ${pageHtml}
     ${renderBottomNav(activeRoute)}
   `;
@@ -134,18 +132,16 @@ async function connectGoogleSheets(): Promise<void> {
   isConnecting = true;
   connectionError = '';
 
-  // Start the OAuth request directly from the user's click.
-  const request = getInvestmentSheetsData();
-
+  app.classList.remove('is-pulling');
   renderPage();
 
   try {
-    investmentData = await request;
+    investmentData = await getInvestmentSheetsData();
   } catch (error) {
     connectionError =
       error instanceof Error
         ? error.message
-        : 'No fue posible conectar con Google Sheets.';
+        : 'No fue posible cargar los datos de Google Sheets.';
   } finally {
     isConnecting = false;
     renderPage();
@@ -204,6 +200,96 @@ function selectNearestChartPoint(
   selectChartPoint(nearestPoint);
 }
 
+/* Pull to refresh: inicio del gesto */
+app.addEventListener(
+  'touchstart',
+  (event: TouchEvent) => {
+    if (event.touches.length !== 1) {
+      pullTracking = false;
+      touchStartY = null;
+      return;
+    }
+
+    if (window.scrollY > 0 || isConnecting) {
+      pullTracking = false;
+      touchStartY = null;
+      return;
+    }
+
+    touchStartY = event.touches[0].clientY;
+    pullDistance = 0;
+    pullTracking = true;
+  },
+  { passive: true },
+);
+
+/* Pull to refresh: seguimiento del desplazamiento */
+app.addEventListener(
+  'touchmove',
+  (event: TouchEvent) => {
+    if (!pullTracking || touchStartY === null) return;
+    if (event.touches.length !== 1) return;
+
+    const currentY = event.touches[0].clientY;
+    pullDistance = currentY - touchStartY;
+
+    if (pullDistance <= 0 || window.scrollY > 0) {
+      app.classList.remove('is-pulling');
+      return;
+    }
+
+    if (pullDistance > 8) {
+      event.preventDefault();
+      app.classList.add('is-pulling');
+
+      const label = app.querySelector<HTMLElement>(
+        '.pull-to-refresh__label',
+      );
+
+      if (label) {
+        label.textContent =
+          pullDistance >= PULL_THRESHOLD
+            ? 'Suelta para actualizar'
+            : 'Desliza hacia abajo para actualizar';
+      }
+    }
+  },
+  { passive: false },
+);
+
+/* Pull to refresh: soltar para actualizar */
+function finishPullGesture(): void {
+  const shouldRefresh =
+    pullTracking &&
+    pullDistance >= PULL_THRESHOLD &&
+    window.scrollY <= 0 &&
+    !isConnecting;
+
+  pullTracking = false;
+  touchStartY = null;
+  pullDistance = 0;
+
+  app.classList.remove('is-pulling');
+
+  if (shouldRefresh) {
+    void connectGoogleSheets();
+  }
+}
+
+app.addEventListener('touchend', finishPullGesture, { passive: true });
+
+app.addEventListener(
+  'touchcancel',
+  () => {
+    pullTracking = false;
+    touchStartY = null;
+    pullDistance = 0;
+    app.classList.remove('is-pulling');
+  },
+  { passive: true },
+);
+
+/* Interacción con el gráfico */
 app.addEventListener('pointermove', (event: PointerEvent) => {
   if (event.pointerType === 'touch' && event.buttons === 0) return;
 
@@ -220,19 +306,11 @@ app.addEventListener('pointermove', (event: PointerEvent) => {
   }
 });
 
+/* Navegación y selección de controles */
 app.addEventListener('click', (event: MouseEvent) => {
   const target = event.target;
 
   if (!(target instanceof Element)) return;
-
-  const connectButton = target.closest<HTMLButtonElement>(
-    '[data-connect-google]',
-  );
-
-  if (connectButton) {
-    void connectGoogleSheets();
-    return;
-  }
 
   const chartPoint = target.closest<HTMLButtonElement>(
     '.performance-chart__point',
@@ -268,6 +346,7 @@ app.addEventListener('click', (event: MouseEvent) => {
   }
 });
 
+/* Navegación por teclado del gráfico */
 app.addEventListener('keydown', (event: KeyboardEvent) => {
   const target = event.target;
 
@@ -295,15 +374,19 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
     case 'ArrowLeft':
       nextIndex = Math.max(0, currentIndex - 1);
       break;
+
     case 'ArrowRight':
       nextIndex = Math.min(points.length - 1, currentIndex + 1);
       break;
+
     case 'Home':
       nextIndex = 0;
       break;
+
     case 'End':
       nextIndex = points.length - 1;
       break;
+
     default:
       return;
   }
@@ -315,4 +398,6 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
   selectChartPoint(nextPoint);
 });
 
+/* Primera renderización y carga automática */
 renderPage();
+void connectGoogleSheets();
