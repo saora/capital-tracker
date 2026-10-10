@@ -20,3 +20,10 @@ button:disabled {
 #app {
   min-height: 100vh;
 }
+
+html:has(.auth-page),
+body:has(.auth-page) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

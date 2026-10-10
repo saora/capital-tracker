@@ -1,40 +1,58 @@
+/* Authentication page */
 .auth-page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: #fff;
-}
-
-.auth-card {
+  box-sizing: border-box;
   width: 100%;
-  max-width: 420px;
-  padding: 36px;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: center;
+
+  padding: 32px 24px 24px;
+  overflow: hidden;
+
   background: #fff;
-  box-shadow: 0 12px 40px rgb(15 23 42 / 6%);
 }
 
+/* Login card */
+.auth-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 520px;
+
+  padding: 44px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+
+  background: #fff;
+  box-shadow: 0 16px 48px rgb(15 23 42 / 8%);
+}
+
+/* Brand */
 .auth-brand {
   text-align: center;
 }
 
 .auth-logo {
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 68px;
+  height: 68px;
   place-items: center;
-  margin: 0 auto 16px;
-  border-radius: 16px;
+
+  margin: 0 auto 20px;
+  border-radius: 18px;
+
   background: #d1fae5;
   color: #047857;
 }
 
 .auth-logo svg {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
@@ -44,57 +62,60 @@
 .auth-brand h1 {
   margin: 0;
   color: #111827;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.7px;
+  letter-spacing: -0.9px;
 }
 
 .auth-brand p,
 .auth-description {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
 }
 
 .auth-brand p {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
 }
 
 .auth-divider {
   height: 1px;
-  margin: 28px 0;
+  margin: 32px 0;
   background: #e5e7eb;
 }
 
 .auth-card h2 {
   margin: 0;
   color: #111827;
-  font-size: 21px;
+  font-size: 24px;
+  font-weight: 650;
 }
 
 .auth-description {
-  margin: 8px 0 22px;
+  margin: 10px 0 26px;
 }
 
 /* Google sign-in button */
 .auth-google-button {
-  display: inline-flex;
   box-sizing: border-box;
+  display: inline-flex;
   width: 100%;
-  min-height: 50px;
+  min-height: 54px;
+
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 12px 16px;
+
+  padding: 14px 18px;
 
   border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 12px;
 
   background: #fff;
   color: #1f2937;
 
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
@@ -107,6 +128,7 @@
   -webkit-appearance: none;
 
   cursor: pointer;
+
   transition:
     background 160ms ease,
     border-color 160ms ease,
@@ -116,6 +138,7 @@
 .auth-google-button:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #9ca3af;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 5%);
 }
 
 .auth-google-button:active:not(:disabled) {
@@ -144,38 +167,111 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  margin: 22px 0 0;
+  gap: 8px;
+
+  margin: 26px 0 0;
+
   color: #6b7280;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .auth-security-note svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
   stroke: currentColor;
   stroke-width: 1.8;
 }
 
 /* Authentication error */
 .auth-error {
-  margin: 0 0 16px;
-  padding: 12px;
+  margin: 0 0 18px;
+  padding: 14px;
+
   border: 1px solid #fecaca;
-  border-radius: 8px;
+  border-radius: 10px;
+
   background: #fef2f2;
   color: #b91c1c;
-  font-size: 13px;
+
+  font-size: 14px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* Mobile */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .auth-page {
     padding: 16px;
   }
 
   .auth-card {
-    padding: 28px 22px;
+    max-width: 480px;
+    padding: 32px 24px;
+    border-radius: 20px;
+  }
+
+  .auth-logo {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 16px;
+  }
+
+  .auth-logo svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .auth-brand h1 {
+    font-size: 28px;
+  }
+
+  .auth-divider {
+    margin: 26px 0;
+  }
+
+  .auth-card h2 {
+    font-size: 22px;
+  }
+}
+
+/* Short screens: keep the card within the viewport */
+@media (max-height: 650px) {
+  .auth-page {
+    padding: 12px;
+  }
+
+  .auth-card {
+    padding: 24px;
+  }
+
+  .auth-logo {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+
+  .auth-logo svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .auth-brand h1 {
+    font-size: 26px;
+  }
+
+  .auth-divider {
+    margin: 18px 0;
+  }
+
+  .auth-description {
+    margin-bottom: 18px;
+  }
+
+  .auth-security-note {
+    margin-top: 16px;
   }
 }
