@@ -1,0 +1,159 @@
+
+/* Account container: no full-width bar */
+
+.session-header {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* Email and user icon */
+
+.session-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-email {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Circular user icon */
+
+.session-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.session-menu-trigger {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.session-menu-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.session-menu-trigger::marker {
+  content: "";
+}
+
+.session-menu-trigger:hover {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.session-menu-trigger:focus-visible {
+  outline: 3px solid #059669;
+  outline-offset: 3px;
+}
+
+.session-menu-trigger svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Dropdown */
+
+.session-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 190px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 12%);
+}
+
+.session-menu:not([open]) .session-menu-dropdown {
+  display: none;
+}
+
+/* Logout button */
+
+.session-logout-button {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #374151;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-logout-button:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.session-logout-button:focus-visible {
+  outline: 3px solid #059669;
+  outline-offset: 2px;
+}
+
+.session-logout-button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Responsive */
+
+@media (max-width: 480px) {
+  .session-email {
+    max-width: 160px;
+    font-size: 11px;
+  }
+
+  .session-menu-trigger {
+    width: 38px;
+    height: 38px;
+  }
+}

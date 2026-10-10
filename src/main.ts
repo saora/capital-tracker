@@ -1,18 +1,17 @@
-
 import './styles/tokens.css';
 import './styles/reset.css';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
-
+import './features/auth/session-header.css';
+import './components/skeleton-loader/skeleton-loader.css';
 import './features/auth/auth.css';
-import './features/dashboard/dashboard.css';
-
 import './features/dashboard/dashboard.css';
 import './components/asset-logo/asset-logo.css';
 import './components/bottom-nav/bottom-nav.css';
 import './main.css';
 
+import { renderSkeletonLoader } from './components/skeleton-loader/skeleton-loader.template';
 import { renderBottomNav } from './components/bottom-nav/bottom-nav';
 import { initializeAssetLogoFallback } from './components/asset-logo/asset-logo';
 
@@ -134,18 +133,27 @@ function renderPage(): void {
 
   let pageHtml: string;
 
+  // Mostrar skeletons durante la carga inicial de Google Sheets.
+  // Si ya hay datos, conservar la vista actual durante las actualizaciones.
+  const showInitialSkeleton =
+    isConnecting && investmentData === null;
+
   switch (activeRoute) {
     case 'dashboard':
-      pageHtml = renderDashboard(
-        activePeriod,
-        investmentData ?? undefined,
-      );
+      pageHtml = showInitialSkeleton
+        ? renderSkeletonLoader('dashboard')
+        : renderDashboard(
+            activePeriod,
+            investmentData ?? undefined,
+          );
       break;
 
     case 'portfolio':
-      pageHtml = renderPortfolio(
-        investmentData ?? undefined,
-      );
+      pageHtml = showInitialSkeleton
+        ? renderSkeletonLoader('portfolio')
+        : renderPortfolio(
+            investmentData ?? undefined,
+          );
       break;
 
     case 'transactions':
@@ -213,7 +221,7 @@ async function handleGoogleLogin(): Promise<void> {
 
     isAuthLoading = false;
 
-    // Reutiliza el token obtenido durante el inicio de sesión.
+    // Reutilizar el token obtenido durante el inicio de sesión.
     await connectGoogleSheets(accessToken);
   } catch (error) {
     connectionError =

@@ -107,7 +107,7 @@ async function verifyAuthorizedUser(
   return email;
 }
 
-function requestGoogleToken(prompt: string): Promise<string> {
+function requestGoogleToken(prompt?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false;
 
@@ -162,7 +162,9 @@ function requestGoogleToken(prompt: string): Promise<string> {
         },
       });
 
-      tokenClient.requestAccessToken({ prompt });
+      tokenClient.requestAccessToken(
+  prompt ? { prompt } : {},
+);
     } catch (error) {
       finishWithError(
         error instanceof Error
@@ -179,7 +181,7 @@ export async function signInWithGoogle(): Promise<string> {
   }
 
   pendingLogin = (async () => {
-    const accessToken = await requestGoogleToken('consent');
+    const accessToken = await requestGoogleToken();
 
     try {
       const email = await verifyAuthorizedUser(accessToken);
