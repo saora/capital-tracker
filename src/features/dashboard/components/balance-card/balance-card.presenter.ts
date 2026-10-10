@@ -14,7 +14,7 @@ export function presentBalanceCard({
     <section class="dashboard__balance card">
       <div class="dashboard__balance-top">
         <p class="dashboard__balance-label">Patrimonio total</p>
-        <span class="demo-tag">Demo</span>
+        <span class="currency-tag">${summary.currency}</span>
       </div>
 
       <p class="dashboard__balance-value">
