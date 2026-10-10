@@ -1,0 +1,98 @@
+
+/* ========================================
+   Layout principal
+   ======================================== */
+
+#app {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  margin-inline: auto;
+  padding: 16px 16px
+    calc(88px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+/* Evitar desbordamientos por padding y bordes */
+
+#app *,
+#app *::before,
+#app *::after {
+  box-sizing: border-box;
+}
+
+/* Contenedores de las páginas */
+
+.dashboard,
+.portfolio,
+.transactions,
+.watchlist {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+/* Secciones y tarjetas */
+
+.dashboard__section,
+.dashboard__balance,
+.dashboard__metrics,
+.holdings-section,
+.holdings-list,
+.performance-card,
+.card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Evitar que textos e importes largos rompan el layout */
+
+.dashboard__balance-value,
+.dashboard__metric-value,
+.holding-value,
+.holding-gain {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Gráficas responsivas */
+
+.performance-chart {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.performance-chart__svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Tablet */
+
+@media (min-width: 600px) {
+  #app {
+    padding: 24px 24px
+      calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Escritorio */
+
+@media (min-width: 1024px) {
+  #app {
+    max-width: 1280px;
+    padding: 32px 32px 48px;
+  }
+}
+
+/* Teléfonos muy pequeños */
+
+@media (max-width: 359px) {
+  #app {
+    padding-inline: 12px;
+  }
+}

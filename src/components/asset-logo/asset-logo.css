@@ -1,0 +1,33 @@
+.asset-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.asset-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 15%;
+}
+
+.asset-logo--sm {
+  width: 2rem;
+  height: 2rem;
+}
+
+.asset-logo--md {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.asset-logo--lg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
