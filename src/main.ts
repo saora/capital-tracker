@@ -1,3 +1,4 @@
+
 import './styles/tokens.css';
 import './styles/reset.css';
 import './styles/global.css';
@@ -87,6 +88,38 @@ function escapeHtml(value: string): string {
   });
 }
 
+function closeAccountMenu(): void {
+  document
+    .querySelectorAll<HTMLDetailsElement>('.session-menu[open]')
+    .forEach((menu) => {
+      menu.open = false;
+    });
+}
+
+/* Cerrar el menú de cuenta al hacer clic fuera de él. */
+document.addEventListener('click', (event: MouseEvent) => {
+  const target = event.target;
+
+  if (!(target instanceof Node)) {
+    return;
+  }
+
+  document
+    .querySelectorAll<HTMLDetailsElement>('.session-menu[open]')
+    .forEach((menu) => {
+      if (!menu.contains(target)) {
+        menu.open = false;
+      }
+    });
+});
+
+/* Cerrar el menú de cuenta con Escape. */
+document.addEventListener('keydown', (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    closeAccountMenu();
+  }
+});
+
 function renderRefreshIndicator(): string {
   if (!isConnecting && !connectionError) {
     return '';
@@ -122,7 +155,6 @@ function renderRefreshIndicator(): string {
 }
 
 function renderPage(): void {
-  // No mostrar las vistas privadas sin una sesión autenticada.
   if (!getSessionAccessToken()) {
     app.innerHTML = renderLoginView(
       connectionError,
@@ -133,8 +165,6 @@ function renderPage(): void {
 
   let pageHtml: string;
 
-  // Mostrar skeletons durante la carga inicial de Google Sheets.
-  // Si ya hay datos, conservar la vista actual durante las actualizaciones.
   const showInitialSkeleton =
     isConnecting && investmentData === null;
 
@@ -182,7 +212,6 @@ async function connectGoogleSheets(
 
   const token = accessToken ?? getSessionAccessToken();
 
-  // No iniciar solicitudes si el usuario no tiene una sesión.
   if (!token) {
     renderPage();
     return;
@@ -221,7 +250,6 @@ async function handleGoogleLogin(): Promise<void> {
 
     isAuthLoading = false;
 
-    // Reutilizar el token obtenido durante el inicio de sesión.
     await connectGoogleSheets(accessToken);
   } catch (error) {
     connectionError =
@@ -241,6 +269,7 @@ async function handleGoogleLogout(): Promise<void> {
 
   isAuthLoading = true;
   connectionError = '';
+  closeAccountMenu();
   renderPage();
 
   try {
@@ -471,7 +500,6 @@ app.addEventListener('click', (event: MouseEvent) => {
     return;
   }
 
-  // Evitar interacciones con vistas privadas sin sesión.
   if (!getSessionAccessToken()) {
     return;
   }
@@ -576,5 +604,5 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
   selectChartPoint(nextPoint);
 });
 
-/* Primera renderización: esperar a que el usuario inicie sesión. */
+/* Primera renderización */
 renderPage();
