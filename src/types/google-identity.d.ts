@@ -4,6 +4,7 @@ interface GoogleTokenResponse {
   error_description?: string;
 }
 
+
 interface GoogleTokenClient {
   requestAccessToken(options?: { prompt?: string }): void;
 }
@@ -15,7 +16,10 @@ interface GoogleOAuth2 {
     callback: (response: GoogleTokenResponse) => void;
     error_callback?: (error: { message?: string }) => void;
   }): GoogleTokenClient;
+
+  revoke(token: string, done: () => void): void;
 }
+
 
 interface GoogleIdentity {
   accounts: {
