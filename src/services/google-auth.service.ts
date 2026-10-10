@@ -1,67 +1,104 @@
-
 const GOOGLE_SHEETS_SCOPE =
-  'openid email profile https://www.googleapis.com/auth/spreadsheets';
+  'https://www.googleapis.com/auth/spreadsheets';
+
+const GOOGLE_SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  GOOGLE_SHEETS_SCOPE,
+].join(' ');
 
 const AUTHORIZED_EMAIL = 'saora.mx@gmail.com';
 
-interface GoogleUserInfo {
-  email?: string;
-  email_verified?: boolean;
-}
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 interface GoogleTokenResponse {
   access_token?: string;
+  expires_in?: number;
   error?: string;
   error_description?: string;
+  scope?: string;
+}
+
+interface GoogleTokenClient {
+  requestAccessToken(options?: { prompt?: string }): void;
+}
+
+interface GoogleOAuth2 {
+  initTokenClient(options: {
+    client_id: string;
+    scope: string;
+    callback: (response: GoogleTokenResponse) => void;
+    error_callback?: (error: {
+      type?: string;
+      message?: string;
+    }) => void;
+  }): GoogleTokenClient;
+
+  revoke(
+    token: string,
+    callback?: () => void,
+  ): void;
 }
 
 let activeAccessToken: string | null = null;
-let activeEmail: string | null = null;
+let authenticatedEmail: string | null = null;
+let pendingLogin: Promise<string> | null = null;
 
-let pendingRequest:
-  | {
-      resolve: (token: string) => void;
-      reject: (error: Error) => void;
-    }
-  | undefined;
+function getGoogleOAuth2(): GoogleOAuth2 {
+  const oauth2 = window.google?.accounts?.oauth2;
 
-function getGoogleClient() {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const google = window.google;
-
-  if (!clientId) {
-    throw new Error('Falta VITE_GOOGLE_CLIENT_ID en .env.local.');
-  }
-
-  if (!google?.accounts?.oauth2) {
+  if (!oauth2) {
     throw new Error(
-      'Google Identity Services no está disponible. Recarga la página.',
+      'Google Identity Services no está disponible. Recarga la página e inténtalo de nuevo.',
     );
   }
 
-  return { clientId, google };
+  return oauth2 as GoogleOAuth2;
 }
 
-async function verifyAuthorizedUser(token: string): Promise<string> {
+function getClientId(): string {
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error(
+      'Falta VITE_GOOGLE_CLIENT_ID. Configura esta variable en el entorno de despliegue.',
+    );
+  }
+
+  return GOOGLE_CLIENT_ID;
+}
+
+async function verifyAuthorizedUser(
+  accessToken: string,
+): Promise<string> {
   const response = await fetch(
     'https://www.googleapis.com/oauth2/v3/userinfo',
     {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
   );
 
   if (!response.ok) {
-    throw new Error('No se pudo verificar tu cuenta de Google.');
+    throw new Error(
+      `No fue posible verificar la cuenta de Google (${response.status}).`,
+    );
   }
 
-  const user = (await response.json()) as GoogleUserInfo;
+  const user = (await response.json()) as {
+    email?: string;
+    email_verified?: boolean;
+  };
+
   const email = user.email?.trim().toLowerCase();
 
   if (!email || user.email_verified !== true) {
-    throw new Error('Google no pudo verificar el correo de la cuenta.');
+    throw new Error(
+      'Google no pudo verificar la dirección de correo de la cuenta.',
+    );
   }
 
-  if (email !== AUTHORIZED_EMAIL) {
+  if (email !== AUTHORIZED_EMAIL.toLowerCase()) {
     throw new Error(
       `Acceso restringido. Inicia sesión con ${AUTHORIZED_EMAIL}.`,
     );
@@ -70,95 +107,112 @@ async function verifyAuthorizedUser(token: string): Promise<string> {
   return email;
 }
 
-export function signInWithGoogle(): Promise<string> {
-  let clientId: string;
-  let google: ReturnType<typeof getGoogleClient>['google'];
+function requestGoogleToken(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
 
-  try {
-    ({ clientId, google } = getGoogleClient());
-  } catch (error) {
-    return Promise.reject(
-      error instanceof Error ? error : new Error('Error de autenticación.'),
-    );
-  }
+    const finishWithError = (error: Error): void => {
+      if (settled) return;
 
-  if (pendingRequest) {
-    return Promise.reject(
-      new Error('Ya existe una solicitud de autorización en curso.'),
-    );
-  }
-
-  return new Promise<string>((resolve, reject) => {
-    pendingRequest = { resolve, reject };
-
-    const finishWithError = (error: Error) => {
-      const request = pendingRequest;
-      pendingRequest = undefined;
-      request?.reject(error);
+      settled = true;
+      reject(error);
     };
 
     try {
-      const tokenClient = google.accounts.oauth2.initTokenClient({
+      const oauth2 = getGoogleOAuth2();
+      const clientId = getClientId();
+
+      const tokenClient = oauth2.initTokenClient({
         client_id: clientId,
-        scope: GOOGLE_SHEETS_SCOPE,
+        scope: GOOGLE_SCOPES,
 
-        callback: async (response: GoogleTokenResponse) => {
-          const request = pendingRequest;
-          pendingRequest = undefined;
+        callback: (response: GoogleTokenResponse) => {
+          if (settled) return;
 
-          if (!request) return;
-
-          if (response.error || !response.access_token) {
-            request.reject(
+          if (response.error) {
+            finishWithError(
               new Error(
                 response.error_description ||
-                  response.error ||
-                  'No fue posible autorizar el acceso a Google.',
+                  `Error de autorización de Google: ${response.error}`,
               ),
             );
             return;
           }
 
-          try {
-            const email = await verifyAuthorizedUser(response.access_token);
-
-            activeAccessToken = response.access_token;
-            activeEmail = email;
-
-            request.resolve(response.access_token);
-          } catch (error) {
-            google.accounts.oauth2.revoke(response.access_token, () => {});
-
-            request.reject(
-              error instanceof Error
-                ? error
-                : new Error('No fue posible verificar la cuenta.'),
+          if (!response.access_token) {
+            finishWithError(
+              new Error(
+                'Google no devolvió un token de acceso válido.',
+              ),
             );
+            return;
           }
+
+          settled = true;
+          resolve(response.access_token);
         },
 
         error_callback: (error) => {
           finishWithError(
             new Error(
-              error.message || 'Falló la ventana de autorización de Google.',
+              error.message ||
+                'No se pudo completar la autorización de Google.',
             ),
           );
         },
       });
 
-      tokenClient.requestAccessToken({ prompt: 'select_account' });
+      tokenClient.requestAccessToken({ prompt });
     } catch (error) {
       finishWithError(
         error instanceof Error
           ? error
-          : new Error('No se pudo iniciar la autorización de Google.'),
+          : new Error('No fue posible iniciar sesión con Google.'),
       );
     }
   });
 }
 
+export async function signInWithGoogle(): Promise<string> {
+  if (pendingLogin) {
+    return pendingLogin;
+  }
+
+  pendingLogin = (async () => {
+    const accessToken = await requestGoogleToken('consent');
+
+    try {
+      const email = await verifyAuthorizedUser(accessToken);
+
+      activeAccessToken = accessToken;
+      authenticatedEmail = email;
+
+      return accessToken;
+    } catch (error) {
+      activeAccessToken = null;
+      authenticatedEmail = null;
+
+      // Revocar el token rechazado, sin afectar otros inicios
+      // de sesión de la aplicación.
+      try {
+        getGoogleOAuth2().revoke(accessToken);
+      } catch {
+        // La validación original sigue siendo el error principal.
+      }
+
+      throw error;
+    }
+  })();
+
+  try {
+    return await pendingLogin;
+  } finally {
+    pendingLogin = null;
+  }
+}
+
 export function getAuthenticatedEmail(): string | null {
-  return activeEmail;
+  return authenticatedEmail;
 }
 
 export function getActiveAccessToken(): string | null {
@@ -166,13 +220,8 @@ export function getActiveAccessToken(): string | null {
 }
 
 export function signOutFromGoogle(): void {
-  const token = activeAccessToken;
-
+  // Cierra la sesión local de Capital Tracker.
+  // No revoca el consentimiento OAuth de Google.
   activeAccessToken = null;
-  activeEmail = null;
-  pendingRequest = undefined;
-
-  if (!token || !window.google?.accounts?.oauth2) return;
-
-  window.google.accounts.oauth2.revoke(token, () => {});
+  authenticatedEmail = null;
 }

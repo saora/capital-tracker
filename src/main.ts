@@ -5,6 +5,9 @@ import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
 
+import './features/auth/auth.css';
+import './features/dashboard/dashboard.css';
+
 import './features/dashboard/dashboard.css';
 import './components/asset-logo/asset-logo.css';
 import './components/bottom-nav/bottom-nav.css';
@@ -20,6 +23,14 @@ import { renderDashboard } from './features/dashboard/dashboard';
 import { renderPortfolio } from './features/portfolio/portfolio';
 import { renderTransactions } from './features/transactions/transactions';
 import { renderWatchlist } from './features/watchlist/watchlist';
+
+import {
+  endGoogleSession,
+  getSessionAccessToken,
+  renderAuthenticatedHeader,
+  renderLoginView,
+  startGoogleSession,
+} from './features/auth/auth';
 
 import { getInvestmentSheetsData } from './services/google-sheets.service';
 import type { InvestmentSheetsData } from './services/google-sheets.service';
@@ -37,7 +48,9 @@ initializeAssetLogoFallback(app);
 let activeRoute: AppRoute = 'dashboard';
 let activePeriod: PerformancePeriod = '1M';
 let investmentData: InvestmentSheetsData | null = null;
+
 let isConnecting = false;
+let isAuthLoading = false;
 let connectionError = '';
 
 let touchStartY: number | null = null;
@@ -46,7 +59,13 @@ let pullTracking = false;
 
 const PULL_THRESHOLD = 75;
 
-const validPeriods: PerformancePeriod[] = ['1W', '1M', '3M', '1Y', 'ALL'];
+const validPeriods: PerformancePeriod[] = [
+  '1W',
+  '1M',
+  '3M',
+  '1Y',
+  'ALL',
+];
 
 const validRoutes: AppRoute[] = [
   'dashboard',
@@ -90,24 +109,43 @@ function renderRefreshIndicator(): string {
       role="status"
       aria-live="polite"
     >
-      <span class="pull-to-refresh__spinner" aria-hidden="true"></span>
+      <span
+        class="pull-to-refresh__spinner"
+        aria-hidden="true"
+      ></span>
       <span class="pull-to-refresh__label">
-        ${investmentData ? 'Actualizando datos...' : 'Cargando tu portafolio...'}
+        ${investmentData
+          ? 'Actualizando datos...'
+          : 'Cargando tu portafolio...'}
       </span>
     </div>
   `;
 }
 
 function renderPage(): void {
+  // No mostrar las vistas privadas sin una sesión autenticada.
+  if (!getSessionAccessToken()) {
+    app.innerHTML = renderLoginView(
+      connectionError,
+      isAuthLoading,
+    );
+    return;
+  }
+
   let pageHtml: string;
 
   switch (activeRoute) {
     case 'dashboard':
-      pageHtml = renderDashboard(activePeriod, investmentData ?? undefined);
+      pageHtml = renderDashboard(
+        activePeriod,
+        investmentData ?? undefined,
+      );
       break;
 
     case 'portfolio':
-      pageHtml = renderPortfolio(investmentData ?? undefined);
+      pageHtml = renderPortfolio(
+        investmentData ?? undefined,
+      );
       break;
 
     case 'transactions':
@@ -120,14 +158,27 @@ function renderPage(): void {
   }
 
   app.innerHTML = `
+    ${renderAuthenticatedHeader()}
     ${renderRefreshIndicator()}
     ${pageHtml}
     ${renderBottomNav(activeRoute)}
   `;
 }
 
-async function connectGoogleSheets(): Promise<void> {
-  if (isConnecting) return;
+async function connectGoogleSheets(
+  accessToken?: string,
+): Promise<void> {
+  if (isConnecting) {
+    return;
+  }
+
+  const token = accessToken ?? getSessionAccessToken();
+
+  // No iniciar solicitudes si el usuario no tiene una sesión.
+  if (!token) {
+    renderPage();
+    return;
+  }
 
   isConnecting = true;
   connectionError = '';
@@ -136,7 +187,7 @@ async function connectGoogleSheets(): Promise<void> {
   renderPage();
 
   try {
-    investmentData = await getInvestmentSheetsData();
+    investmentData = await getInvestmentSheetsData(token);
   } catch (error) {
     connectionError =
       error instanceof Error
@@ -148,7 +199,63 @@ async function connectGoogleSheets(): Promise<void> {
   }
 }
 
-function getChartPoints(interaction: HTMLElement): HTMLButtonElement[] {
+async function handleGoogleLogin(): Promise<void> {
+  if (isAuthLoading) {
+    return;
+  }
+
+  isAuthLoading = true;
+  connectionError = '';
+  renderPage();
+
+  try {
+    const accessToken = await startGoogleSession();
+
+    isAuthLoading = false;
+
+    // Reutiliza el token obtenido durante el inicio de sesión.
+    await connectGoogleSheets(accessToken);
+  } catch (error) {
+    connectionError =
+      error instanceof Error
+        ? error.message
+        : 'No fue posible iniciar sesión con Google.';
+
+    isAuthLoading = false;
+    renderPage();
+  }
+}
+
+async function handleGoogleLogout(): Promise<void> {
+  if (isAuthLoading) {
+    return;
+  }
+
+  isAuthLoading = true;
+  connectionError = '';
+  renderPage();
+
+  try {
+    await endGoogleSession();
+
+    investmentData = null;
+    activeRoute = 'dashboard';
+    activePeriod = '1M';
+    connectionError = '';
+  } catch (error) {
+    connectionError =
+      error instanceof Error
+        ? error.message
+        : 'No fue posible cerrar la sesión de Google.';
+  } finally {
+    isAuthLoading = false;
+    renderPage();
+  }
+}
+
+function getChartPoints(
+  interaction: HTMLElement,
+): HTMLButtonElement[] {
   return Array.from(
     interaction.querySelectorAll<HTMLButtonElement>(
       '.performance-chart__point',
@@ -156,12 +263,16 @@ function getChartPoints(interaction: HTMLElement): HTMLButtonElement[] {
   );
 }
 
-function selectChartPoint(selectedPoint: HTMLButtonElement): void {
+function selectChartPoint(
+  selectedPoint: HTMLButtonElement,
+): void {
   const interaction = selectedPoint.closest<HTMLElement>(
     '.performance-chart__interaction',
   );
 
-  if (!interaction) return;
+  if (!interaction) {
+    return;
+  }
 
   getChartPoints(interaction).forEach((point) => {
     const isSelected = point === selectedPoint;
@@ -181,7 +292,9 @@ function selectNearestChartPoint(
 ): void {
   const points = getChartPoints(interaction);
 
-  if (points.length === 0) return;
+  if (points.length === 0) {
+    return;
+  }
 
   let nearestPoint = points[0];
   let shortestDistance = Number.POSITIVE_INFINITY;
@@ -204,6 +317,12 @@ function selectNearestChartPoint(
 app.addEventListener(
   'touchstart',
   (event: TouchEvent) => {
+    if (!getSessionAccessToken()) {
+      pullTracking = false;
+      touchStartY = null;
+      return;
+    }
+
     if (event.touches.length !== 1) {
       pullTracking = false;
       touchStartY = null;
@@ -227,8 +346,13 @@ app.addEventListener(
 app.addEventListener(
   'touchmove',
   (event: TouchEvent) => {
-    if (!pullTracking || touchStartY === null) return;
-    if (event.touches.length !== 1) return;
+    if (!pullTracking || touchStartY === null) {
+      return;
+    }
+
+    if (event.touches.length !== 1) {
+      return;
+    }
 
     const currentY = event.touches[0].clientY;
     pullDistance = currentY - touchStartY;
@@ -260,6 +384,7 @@ app.addEventListener(
 /* Pull to refresh: soltar para actualizar */
 function finishPullGesture(): void {
   const shouldRefresh =
+    Boolean(getSessionAccessToken()) &&
     pullTracking &&
     pullDistance >= PULL_THRESHOLD &&
     window.scrollY <= 0 &&
@@ -276,7 +401,11 @@ function finishPullGesture(): void {
   }
 }
 
-app.addEventListener('touchend', finishPullGesture, { passive: true });
+app.addEventListener(
+  'touchend',
+  finishPullGesture,
+  { passive: true },
+);
 
 app.addEventListener(
   'touchcancel',
@@ -291,11 +420,15 @@ app.addEventListener(
 
 /* Interacción con el gráfico */
 app.addEventListener('pointermove', (event: PointerEvent) => {
-  if (event.pointerType === 'touch' && event.buttons === 0) return;
+  if (event.pointerType === 'touch' && event.buttons === 0) {
+    return;
+  }
 
   const target = event.target;
 
-  if (!(target instanceof Element)) return;
+  if (!(target instanceof Element)) {
+    return;
+  }
 
   const interaction = target.closest<HTMLElement>(
     '.performance-chart__interaction',
@@ -306,11 +439,34 @@ app.addEventListener('pointermove', (event: PointerEvent) => {
   }
 });
 
-/* Navegación y selección de controles */
+/* Navegación, autenticación y selección de controles */
 app.addEventListener('click', (event: MouseEvent) => {
   const target = event.target;
 
-  if (!(target instanceof Element)) return;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const authButton = target.closest<HTMLElement>(
+    '[data-auth-action]',
+  );
+
+  if (authButton) {
+    const action = authButton.dataset.authAction;
+
+    if (action === 'login') {
+      void handleGoogleLogin();
+    } else if (action === 'logout') {
+      void handleGoogleLogout();
+    }
+
+    return;
+  }
+
+  // Evitar interacciones con vistas privadas sin sesión.
+  if (!getSessionAccessToken()) {
+    return;
+  }
 
   const chartPoint = target.closest<HTMLButtonElement>(
     '.performance-chart__point',
@@ -321,12 +477,17 @@ app.addEventListener('click', (event: MouseEvent) => {
     return;
   }
 
-  const periodButton = target.closest<HTMLElement>('[data-period]');
+  const periodButton = target.closest<HTMLElement>(
+    '[data-period]',
+  );
 
   if (periodButton) {
     const period = periodButton.dataset.period;
 
-    if (period && validPeriods.includes(period as PerformancePeriod)) {
+    if (
+      period &&
+      validPeriods.includes(period as PerformancePeriod)
+    ) {
       activePeriod = period as PerformancePeriod;
       renderPage();
     }
@@ -334,7 +495,9 @@ app.addEventListener('click', (event: MouseEvent) => {
     return;
   }
 
-  const routeButton = target.closest<HTMLElement>('[data-route]');
+  const routeButton = target.closest<HTMLElement>(
+    '[data-route]',
+  );
 
   if (routeButton) {
     const route = routeButton.dataset.route;
@@ -361,12 +524,16 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
     '.performance-chart__interaction',
   );
 
-  if (!interaction) return;
+  if (!interaction) {
+    return;
+  }
 
   const points = getChartPoints(interaction);
   const currentIndex = points.indexOf(target);
 
-  if (currentIndex === -1) return;
+  if (currentIndex === -1) {
+    return;
+  }
 
   let nextIndex = currentIndex;
 
@@ -376,7 +543,10 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
       break;
 
     case 'ArrowRight':
-      nextIndex = Math.min(points.length - 1, currentIndex + 1);
+      nextIndex = Math.min(
+        points.length - 1,
+        currentIndex + 1,
+      );
       break;
 
     case 'Home':
@@ -398,6 +568,5 @@ app.addEventListener('keydown', (event: KeyboardEvent) => {
   selectChartPoint(nextPoint);
 });
 
-/* Primera renderización y carga automática */
+/* Primera renderización: esperar a que el usuario inicie sesión. */
 renderPage();
-void connectGoogleSheets();

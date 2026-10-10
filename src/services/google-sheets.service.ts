@@ -171,8 +171,10 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
     .filter((item): item is ParsedInvestment => item !== null);
 }
 
-export async function getInvestmentSheetsData(): Promise<InvestmentSheetsData> {
-  const token = await signInWithGoogle();
+export async function getInvestmentSheetsData(
+  accessToken?: string,
+): Promise<InvestmentSheetsData> {
+  const token = accessToken ?? await signInWithGoogle();
 
   const [investmentRows, variableRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
