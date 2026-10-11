@@ -1,7 +1,7 @@
 import type { AppRoute } from "../types/navigation";
 import type { PerformancePeriod } from "../types/portfolio";
 
-import { getSessionAccessToken } from "../features/auth/auth";
+import { hasActiveAppSession } from "../features/auth/auth";
 
 import {
   appState,
@@ -77,7 +77,7 @@ function selectNearestChartPoint(points: HTMLElement[], targetX: number): void {
 }
 
 function appStateHasSession(): boolean {
-  return Boolean(getSessionAccessToken());
+  return hasActiveAppSession();
 }
 
 export function initializeAppEvents(

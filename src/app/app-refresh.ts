@@ -1,6 +1,16 @@
 
-import { getSessionAccessToken } from '../features/auth/auth';
-import { getInvestmentSheetsData } from '../services/google-sheets.service';
+import {
+  getSessionAccessToken,
+  hasActiveAppSession,
+} from '../features/auth/auth';
+
+import {
+  validatePasskeySession,
+} from '../services/passkey-auth.service';
+
+import {
+  getInvestmentSheetsData,
+} from '../services/google-sheets.service';
 
 import { appState } from './app-state';
 import { renderPage } from './app-renderer';
@@ -15,7 +25,7 @@ export async function connectGoogleSheets(
 
   const token = accessToken ?? getSessionAccessToken();
 
-  if (!token) {
+  if (!token || !hasActiveAppSession()) {
     renderPage(app);
     return;
   }
@@ -27,6 +37,15 @@ export async function connectGoogleSheets(
   renderPage(app);
 
   try {
+    const isValidSession = await validatePasskeySession();
+
+    if (!isValidSession) {
+      appState.investmentData = null;
+      appState.connectionError =
+        'Tu sesión de seguridad expiró. Inicia sesión nuevamente.';
+      return;
+    }
+
     appState.investmentData =
       await getInvestmentSheetsData(token);
   } catch (error) {

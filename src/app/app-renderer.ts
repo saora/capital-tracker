@@ -2,11 +2,13 @@
 import { renderSkeletonLoader } from '../components/skeleton-loader/skeleton-loader.template';
 import { renderBottomNav } from '../components/bottom-nav/bottom-nav';
 
+
 import {
   renderAuthenticatedHeader,
   renderLoginView,
-  getSessionAccessToken,
+  hasActiveAppSession,
 } from '../features/auth/auth';
+
 
 import { renderDashboard } from '../features/dashboard/dashboard';
 import { renderPortfolio } from '../features/portfolio/portfolio';
@@ -66,13 +68,15 @@ function renderRefreshIndicator(): string {
 }
 
 export function renderPage(app: HTMLDivElement): void {
-  if (!getSessionAccessToken()) {
-    app.innerHTML = renderLoginView(
-      appState.connectionError,
-      appState.isAuthLoading,
-    );
-    return;
-  }
+  
+if (!hasActiveAppSession()) {
+  app.innerHTML = renderLoginView(
+    appState.connectionError,
+    appState.isAuthLoading,
+  );
+  return;
+}
+
 
   let pageHtml: string;
 

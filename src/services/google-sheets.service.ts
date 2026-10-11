@@ -1,11 +1,10 @@
-import { signInWithGoogle } from './google-auth.service';
-import type { Investment, AssetType } from '../types/investment';
-import type { PortfolioSummary, ChartPoint } from '../types/portfolio';
-import { getMarketPrices } from './market-prices.service';
+import type { Investment, AssetType } from "../types/investment";
+import type { PortfolioSummary, ChartPoint } from "../types/portfolio";
+import { getMarketPrices } from "./market-prices.service";
 import {
   savePortfolioSnapshot,
   getPortfolioHistory,
-} from './portfolio-history.service';
+} from "./portfolio-history.service";
 
 export interface InvestmentSheetsData {
   investments: Investment[];
@@ -15,25 +14,25 @@ export interface InvestmentSheetsData {
 
 type SheetRow = Array<string | number | boolean | null>;
 
-const API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
+const API_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 
 function getSpreadsheetId(): string {
   const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEET_ID;
 
   if (!spreadsheetId) {
-    throw new Error('Falta VITE_GOOGLE_SHEET_ID en el archivo .env.local.');
+    throw new Error("Falta VITE_GOOGLE_SHEET_ID en el archivo .env.local.");
   }
 
   return spreadsheetId;
 }
 
 function toNumber(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
 
-  if (typeof value === 'string') {
-    const normalized = value.replace(/[$,%\s]/g, '').replace(/,/g, '');
+  if (typeof value === "string") {
+    const normalized = value.replace(/[$,%\s]/g, "").replace(/,/g, "");
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -42,16 +41,20 @@ function toNumber(value: unknown): number {
 }
 
 function normalize(value: unknown): string {
-  return String(value ?? '').trim().toLocaleLowerCase('es-MX');
+  return String(value ?? "")
+    .trim()
+    .toLocaleLowerCase("es-MX");
 }
 
 async function readRange(token: string, range: string): Promise<SheetRow[]> {
   const url = new URL(
-    `${API_URL}/${encodeURIComponent(getSpreadsheetId())}/values/${encodeURIComponent(range)}`,
+    `${API_URL}/${encodeURIComponent(
+      getSpreadsheetId(),
+    )}/values/${encodeURIComponent(range)}`,
   );
 
-  url.searchParams.set('majorDimension', 'ROWS');
-  url.searchParams.set('valueRenderOption', 'UNFORMATTED_VALUE');
+  url.searchParams.set("majorDimension", "ROWS");
+  url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -70,13 +73,13 @@ async function readRange(token: string, range: string): Promise<SheetRow[]> {
 function getAssetType(symbol: string): AssetType {
   const normalized = normalize(symbol);
 
-  if (normalized === 'btc') return 'crypto';
+  if (normalized === "btc") return "crypto";
 
-  if (['voo', 'qqq', 'ivvpeso', 'ivvpesoishrs'].includes(normalized)) {
-    return 'etf';
+  if (["voo", "qqq", "ivvpeso", "ivvpesoishrs"].includes(normalized)) {
+    return "etf";
   }
 
-  return 'stock';
+  return "stock";
 }
 
 interface ParsedInvestment {
@@ -94,15 +97,14 @@ function makeInvestment(
   currentValue: number,
   quantity = 1,
 ): Investment {
-  const safeQuantity =
-    Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
 
   return {
     id,
     symbol,
     name,
     assetType,
-    currency: 'MXN',
+    currency: "MXN",
     quantity: safeQuantity,
     averageCost: invested / safeQuantity,
     currentPrice: currentValue / safeQuantity,
@@ -112,9 +114,9 @@ function makeInvestment(
 function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
     .slice(1)
-    .filter((row) => normalize(row[0]) === 'renta fija')
+    .filter((row) => normalize(row[0]) === "renta fija")
     .map((row, index) => {
-      const platform = String(row[2] ?? '').trim();
+      const platform = String(row[2] ?? "").trim();
       const invested = toNumber(row[3]);
       const currentValue = toNumber(row[4]);
 
@@ -127,7 +129,7 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
           `fixed-${index}-${platform}`,
           platform.toUpperCase(),
           platform,
-          'fixed-income',
+          "fixed-income",
           invested,
           currentValue,
         ),
@@ -141,14 +143,14 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
 function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
     .map((row, index) => {
-      const symbol = String(row[0] ?? '').trim();
+      const symbol = String(row[0] ?? "").trim();
       const invested = toNumber(row[9]);
       const currentValue = toNumber(row[10]);
       const quantity = toNumber(row[7]);
 
       if (
         !symbol ||
-        ['total', 'total general', 'subtotal'].includes(normalize(symbol)) ||
+        ["total", "total general", "subtotal"].includes(normalize(symbol)) ||
         (invested === 0 && currentValue === 0)
       ) {
         return null;
@@ -172,9 +174,15 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
 }
 
 export async function getInvestmentSheetsData(
-  accessToken?: string,
+  accessToken: string,
 ): Promise<InvestmentSheetsData> {
-  const token = accessToken ?? await signInWithGoogle();
+  if (!accessToken.trim()) {
+    throw new Error(
+      "Se requiere un token de Google válido para consultar las inversiones.",
+    );
+  }
+
+  const token = accessToken;
 
   const [investmentRows, variableRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
@@ -188,10 +196,10 @@ export async function getInvestmentSheetsData(
 
   try {
     marketPrices = await getMarketPrices();
-    console.log('Precios externos cargados correctamente.');
+    console.log("Precios externos cargados correctamente.");
   } catch (error) {
     console.warn(
-      'No se pudieron cargar los precios externos. Se usarán los valores de Google Sheets.',
+      "No se pudieron cargar los precios externos. Se usarán los valores de Google Sheets.",
       error,
     );
   }
@@ -202,8 +210,8 @@ export async function getInvestmentSheetsData(
     const priceMXN = quote?.priceMXN;
 
     if (
-      quote?.status !== 'ok' ||
-      typeof priceMXN !== 'number' ||
+      quote?.status !== "ok" ||
+      typeof priceMXN !== "number" ||
       !Number.isFinite(priceMXN) ||
       priceMXN <= 0
     ) {
@@ -229,7 +237,7 @@ export async function getInvestmentSheetsData(
 
   if (parsedInvestments.length === 0) {
     throw new Error(
-      'No se encontraron posiciones. Verifica los nombres de las hojas y sus columnas.',
+      "No se encontraron posiciones. Verifica los nombres de las hojas y sus columnas.",
     );
   }
 
@@ -248,7 +256,7 @@ export async function getInvestmentSheetsData(
     totalValue,
     totalGain: totalValue - invested,
     dailyChange: 0,
-    currency: 'MXN',
+    currency: "MXN",
   };
 
   console.table(
@@ -260,7 +268,7 @@ export async function getInvestmentSheetsData(
     })),
   );
 
-  console.log('RESUMEN CALCULADO', {
+  console.log("RESUMEN CALCULADO", {
     capitalInvertido: invested,
     patrimonioTotal: totalValue,
     gananciaTotal: totalValue - invested,
@@ -276,13 +284,13 @@ export async function getInvestmentSheetsData(
       totalGain: summary.totalGain,
     });
   } catch (error) {
-    console.warn('No se pudo guardar la captura del portafolio.', error);
+    console.warn("No se pudo guardar la captura del portafolio.", error);
   }
 
   try {
     historyPoints = await getPortfolioHistory(token);
   } catch (error) {
-    console.warn('No se pudo leer el historial del portafolio.', error);
+    console.warn("No se pudo leer el historial del portafolio.", error);
   }
 
   return {
