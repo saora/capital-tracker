@@ -3,8 +3,8 @@ import { initializeAssetLogoFallback } from '../components/asset-logo/asset-logo
 
 import {
   endGoogleSession,
+  getSessionAccessToken,
   startGoogleSession,
-  startPasskeySession,
 } from '../features/auth/auth';
 
 import { appState } from './app-state';
@@ -34,16 +34,13 @@ export async function handleGoogleLogin(
   try {
     const accessToken = await startGoogleSession();
 
-    await startPasskeySession(accessToken);
-
     appState.isAuthLoading = false;
-
     await connectGoogleSheets(app, accessToken);
   } catch (error) {
     appState.connectionError =
       error instanceof Error
         ? error.message
-        : 'No fue posible completar la autenticación.';
+        : 'No fue posible iniciar sesión con Google.';
 
     appState.isAuthLoading = false;
     renderPage(app);
@@ -75,7 +72,7 @@ export async function handleGoogleLogout(
     appState.connectionError =
       error instanceof Error
         ? error.message
-        : 'No fue posible cerrar la sesión.';
+        : 'No fue posible cerrar la sesión de Google.';
   } finally {
     appState.isAuthLoading = false;
     renderPage(app);
@@ -95,6 +92,11 @@ export function initializeApp(app: HTMLDivElement): void {
   });
 
   renderPage(app);
+
+  // Conserva la sesión existente y carga los datos si ya hay token.
+  if (getSessionAccessToken()) {
+    void connectGoogleSheets(app);
+  }
 }
 
 export { closeAccountMenu };
