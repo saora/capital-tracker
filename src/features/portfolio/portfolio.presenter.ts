@@ -15,6 +15,7 @@ export function presentPortfolio(
       (item) =>
         item.assetType === 'stock' ||
         item.assetType === 'etf',
+      item.assetType === 'crypto'
     )
     .map((item) => {
       const value = item.quantity * item.currentPrice;
