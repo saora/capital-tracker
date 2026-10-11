@@ -1,5 +1,6 @@
-
 import type { PortfolioViewModel } from './portfolio.types';
+import { presentAssetLogo } from '../../components/asset-logo/asset-logo.presenter';
+import { renderAssetLogoTemplate } from '../../components/asset-logo/asset-logo.template';
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -19,13 +20,20 @@ export function renderPortfolioTemplate(
   viewModel: PortfolioViewModel,
 ): string {
   const positionsHtml = viewModel.positions
-    .map(
-      (position) => `
+    .map((position) => {
+      const logoViewModel = presentAssetLogo({
+        symbol: position.symbol,
+        name: position.name,
+        size: 'md',
+        category: 'ticker',
+      });
+
+      const logoHtml = renderAssetLogoTemplate(logoViewModel);
+
+      return `
         <article class="holding-row">
           <div class="holding-row__identity">
-            <div class="asset-avatar asset-avatar--${position.assetType}">
-              ${escapeHtml(position.symbol.slice(0, 1))}
-            </div>
+            ${logoHtml}
 
             <div class="holding-row__name">
               <strong>${escapeHtml(position.symbol)}</strong>
@@ -41,8 +49,8 @@ export function renderPortfolioTemplate(
             </span>
           </div>
         </article>
-      `,
-    )
+      `;
+    })
     .join('');
 
   return `
