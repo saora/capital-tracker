@@ -3,7 +3,8 @@ export type AssetType =
   | 'stock'
   | 'etf'
   | 'crypto'
-  | 'fixed-income';
+  | 'fixed-income'
+  | 'bank-account';
 
 export type Currency = 'MXN' | 'USD';
 

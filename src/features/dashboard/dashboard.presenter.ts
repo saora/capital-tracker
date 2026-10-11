@@ -13,8 +13,11 @@ import { renderMetricsGridTemplate } from './components/metrics-grid/metrics-gri
 import { renderPerformanceChartTemplate } from './components/performance-chart/performance-chart.template';
 import { renderHoldingsListTemplate } from './components/holdings-list/holdings-list.template';
 
+type HoldingsCategory = 'stocks' | 'bank-accounts';
+
 export function presentDashboard(
   data: DashboardData,
+  holdingsCategory: HoldingsCategory = 'stocks',
 ): DashboardViewModel {
   const performanceChartViewModel = presentPerformanceChart({
     points: data.chartPoints,
@@ -48,6 +51,7 @@ export function presentDashboard(
     holdingsListHtml: renderHoldingsListTemplate(
       presentHoldingsList({
         investments: data.investments,
+        category: holdingsCategory,
       }),
     ),
 
