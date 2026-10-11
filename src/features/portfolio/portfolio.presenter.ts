@@ -14,7 +14,7 @@ export function presentPortfolio(
     .filter(
       (item) =>
         item.assetType === 'stock' ||
-        item.assetType === 'etf',
+        item.assetType === 'etf' ||
       item.assetType === 'crypto'
     )
     .map((item) => {
