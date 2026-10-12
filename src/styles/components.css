@@ -232,7 +232,7 @@
 
 .portfolio-location-card__title {
   margin: 0;
-  font-size: 17px;
+  font-size: 0.875rem;
 }
 
 .portfolio-location-card__count {
@@ -240,14 +240,43 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  min-width: 1.75rem;
-  height: 1.75rem;
-  padding: 0 var(--space-2);
-  color: var(--color-brand-900);
-  background: var(--color-brand-100);
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  color: #ffffff;
+  background: #000000;
   border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-location-card__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.portfolio-location-card__name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.portfolio-location-card__title-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.portfolio-location-card__total-value {
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .portfolio-location-card__holdings .holding-row:first-child {
@@ -385,7 +414,7 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   text-align: right;
-  font-size: 17px;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -394,7 +423,7 @@
 }
 
 .portfolio-location-card__performance span {
-  font-size: 17px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -424,15 +453,15 @@
   }
 
   .portfolio-location-card__title {
-    font-size: 17px;
+    font-size: 0.875rem;
   }
 
   .portfolio-location-card__performance {
     gap: 0.2rem;
-    font-size: 17px;
+    font-size: 0.875rem;
   }
 
   .portfolio-location-card__performance span {
-    font-size: 17px;
+    font-size: 0.875rem;
   }
 }
