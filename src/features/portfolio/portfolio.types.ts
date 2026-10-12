@@ -5,6 +5,7 @@ export interface PortfolioPosition {
   name: string;
   assetType: AssetType;
   currency: Currency;
+  location: string;
   valueLabel: string;
   currentPriceLabel: string;
   dailyChangeLabel: string;
