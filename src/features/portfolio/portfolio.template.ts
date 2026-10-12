@@ -17,9 +17,8 @@ function escapeHtml(value: string): string {
   });
 }
 
-function formatSignedCurrency(value: number, currency: PortfolioPosition['currency']): string {
-  const sign = value > 0 ? '+' : value < 0 ? '-' : '';
-  return `${sign}${formatCurrency(Math.abs(value), currency)}`;
+function formatCurrencyAmount(value: number, currency: PortfolioPosition['currency']): string {
+  return formatCurrency(Math.abs(value), currency);
 }
 
 export function renderPortfolioTemplate(
@@ -81,7 +80,7 @@ export function renderPortfolioTemplate(
       const gain = positions.reduce((total, position) => total + position.gainValue, 0);
       const performance = invested > 0 ? (gain / invested) * 100 : 0;
       const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
-      const amountLabel = formatSignedCurrency(gain, viewModel.currency);
+      const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
       const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
       return `
