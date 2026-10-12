@@ -1,8 +1,9 @@
-
 export interface MarketPrice {
   symbol: string;
   providerSymbol: string | null;
   price: number | null;
+  previousClose?: number | null;
+  dailyChangePercent?: number | null;
   currency: string | null;
   priceMXN: number | null;
   timestamp: string | null;

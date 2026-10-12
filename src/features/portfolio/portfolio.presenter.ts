@@ -1,29 +1,73 @@
+import type { Investment } from "../../types/investment";
+import { formatCurrency } from "../../utils/formatters";
+import type { PortfolioPosition, PortfolioViewModel } from "./portfolio.types";
 
-import type { Investment } from '../../types/investment';
-import { formatCurrency } from '../../utils/formatters';
-import type {
-  PortfolioPosition,
-  PortfolioViewModel,
-} from './portfolio.types';
+function formatMarketPrice(value: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatDailyChange(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "N/D";
+  }
+
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
 
 export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
 ): PortfolioViewModel {
+  console.log("DEBUG: SE EJECUTA PORTFOLIO PRESENTER", {
+    investmentsCount: investments.length,
+    firstSymbol: investments[0]?.symbol,
+  });
+
   const positions: PortfolioPosition[] = investments
     .filter(
       (item) =>
-        item.assetType === 'stock' ||
-        item.assetType === 'etf' ||
-      item.assetType === 'crypto'
+        item.assetType === "stock" ||
+        item.assetType === "etf" ||
+        item.assetType === "crypto",
     )
     .map((item) => {
       const value = item.quantity * item.currentPrice;
       const cost = item.quantity * item.averageCost;
       const gain = value - cost;
-      const gainPercent = cost
-        ? (gain / cost) * 100
-        : 0;
+      const gainPercent = cost !== 0 ? (gain / cost) * 100 : 0;
+      const dailyChange = item.dailyChangePercent;
+
+      console.log("DEBUG PORTFOLIO PRESENTER", {
+        symbol: item.symbol,
+        dailyChangePercent: item.dailyChangePercent,
+        dailyChangeLabel: formatDailyChange(item.dailyChangePercent),
+      });
+
+      const hasDailyChange =
+        typeof dailyChange === "number" && Number.isFinite(dailyChange);
+
+      const gainAmountLabel = formatCurrency(Math.abs(gain), item.currency);
+
+      const gainLabel =
+        `${gain > 0 ? "+" : gain < 0 ? "-" : ""}${gainAmountLabel} ` +
+        `(${gainPercent.toFixed(2)}%)`;
+
+      let dailyChangeClass: PortfolioPosition["dailyChangeClass"];
+
+      if (!hasDailyChange) {
+        dailyChangeClass = "text-muted";
+      } else if ((dailyChange ?? 0) >= 0) {
+        dailyChangeClass = "text-positive";
+      } else {
+        dailyChangeClass = "text-negative";
+      }
 
       return {
         symbol: item.symbol,
@@ -31,11 +75,11 @@ export function presentPortfolio(
         assetType: item.assetType,
         currency: item.currency,
         valueLabel: formatCurrency(value, item.currency),
-        gainPercentLabel: `${
-          gain >= 0 ? '+' : ''
-        }${gainPercent.toFixed(2)}%`,
-        gainClass:
-          gain >= 0 ? 'text-positive' : 'text-negative',
+        currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
+        dailyChangeLabel: formatDailyChange(dailyChange),
+        dailyChangeClass,
+        gainLabel,
+        gainClass: gain >= 0 ? "text-positive" : "text-negative",
       };
     });
 
@@ -43,7 +87,7 @@ export function presentPortfolio(
     positions,
     totalPositions: positions.length,
     disclaimer: connected
-      ? 'Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja.'
-      : 'Datos ficticios. Los valores están en la moneda indicada por activo.',
+      ? "Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja."
+      : "Datos ficticios. Los valores están en la moneda indicada por activo.",
   };
 }

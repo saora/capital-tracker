@@ -37,15 +37,22 @@ export function renderPortfolioTemplate(
 
             <div class="holding-row__name">
               <strong>${escapeHtml(position.symbol)}</strong>
-              <span>${escapeHtml(position.name)}</span>
+
+              <span class="portfolio-holding__quote">
+                <span class="${position.dailyChangeClass}">
+                  ${escapeHtml(position.dailyChangeLabel)}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>${escapeHtml(position.currentPriceLabel)}</span>
+              </span>
             </div>
           </div>
 
           <div class="holding-row__numbers">
             <strong>${escapeHtml(position.valueLabel)}</strong>
 
-            <span class="${position.gainClass}">
-              ${escapeHtml(position.gainPercentLabel)}
+            <span class="portfolio-holding__gain ${position.gainClass}">
+              ${escapeHtml(position.gainLabel)}
             </span>
           </div>
         </article>
