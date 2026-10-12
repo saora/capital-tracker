@@ -32,9 +32,8 @@ function formatDailyChange(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
-function formatSignedCurrency(value: number, currency: "MXN" | "USD"): string {
-  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
-  return `${sign}${formatCurrency(Math.abs(value), currency)}`;
+function formatCurrencyAmount(value: number, currency: "MXN" | "USD"): string {
+  return formatCurrency(Math.abs(value), currency);
 }
 
 export function presentPortfolio(
@@ -109,7 +108,7 @@ export function presentPortfolio(
     positions,
     totalPositions: positions.length,
     totalValueLabel: formatCurrency(totalValue, currency),
-    totalGainAmountLabel: formatSignedCurrency(totalGain, currency),
+    totalGainAmountLabel: formatCurrencyAmount(totalGain, currency),
     totalPerformanceLabel: formatPercent(totalPerformance),
     totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,
