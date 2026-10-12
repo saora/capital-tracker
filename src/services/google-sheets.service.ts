@@ -144,6 +144,22 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
     .filter((item): item is ParsedInvestment => item !== null);
 }
 
+function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
+  const activeAssets = new Map<string, string>();
+
+  rows.forEach((row) => {
+    const symbol = normalize(row[0]);
+    const location = String(row[1] ?? "").trim();
+    const status = normalize(row[2]);
+
+    if (symbol && status === "activo") {
+      activeAssets.set(symbol, location || "Sin ubicación");
+    }
+  });
+
+  return activeAssets;
+}
+
 function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
     .map((row, index) => {
@@ -182,13 +198,24 @@ export async function getInvestmentSheetsData(
 ): Promise<InvestmentSheetsData> {
   const token = accessToken ?? (await signInWithGoogle());
 
-  const [investmentRows, variableRows] = await Promise.all([
+  const [investmentRows, variableRows, portfolioControlRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
     readRange(token, "'Renta variable'!A11:M"),
+    readRange(token, "'Portfolio'!A2:C"),
   ]);
 
   const fixedIncome = parseFixedIncome(investmentRows);
-  const variableIncomeFromSheets = parseVariableIncome(variableRows);
+  const activeAssets = parsePortfolioControl(portfolioControlRows);
+  const variableIncomeFromSheets = parseVariableIncome(variableRows)
+    .filter((item) => activeAssets.has(normalize(item.investment.symbol)))
+    .map((item) => ({
+      ...item,
+      investment: {
+        ...item.investment,
+        location:
+          activeAssets.get(normalize(item.investment.symbol)) ?? "Sin ubicación",
+      },
+    }));
 
   let marketPrices: Awaited<ReturnType<typeof getMarketPrices>> = {};
 
