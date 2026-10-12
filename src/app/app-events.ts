@@ -34,7 +34,7 @@ function selectChartPoint(point: HTMLElement): void {
   points.forEach((item) => {
     const isSelected = item === point;
 
-    item.classList.toggle("is-selected", isSelected);
+    item.classList.toggle("performance-chart__point--selected", isSelected);
     item.setAttribute("aria-pressed", String(isSelected));
   });
 
