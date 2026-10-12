@@ -24,6 +24,10 @@ function formatCurrencyAmount(value: number, currency: PortfolioPosition['curren
 export function renderPortfolioTemplate(
   viewModel: PortfolioViewModel,
 ): string {
+  const totalPortfolioValue = viewModel.positions.reduce(
+    (total, position) => total + position.currentValue,
+    0,
+  );
   const positionsByLocation = new Map<string, PortfolioPosition[]>();
 
   viewModel.positions.forEach((position) => {
@@ -34,7 +38,11 @@ export function renderPortfolioTemplate(
   });
 
   const positionsHtml = Array.from(positionsByLocation.entries())
-    .map(([location, positions]) => {
+    .map(([location, groupedPositions]) => {
+      // Sort by portfolio weight (equivalent to current value because all positions share the same portfolio denominator).
+      const positions = [...groupedPositions].sort(
+        (a, b) => b.currentValue - a.currentValue,
+      );
       const rowsHtml = positions
         .map((position) => {
           const logoViewModel = presentAssetLogo({
@@ -85,9 +93,16 @@ export function renderPortfolioTemplate(
       const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
       const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
       const performanceLabel = formatPercent(performance);
+      const portfolioWeight = totalPortfolioValue > 0
+        ? (currentValue / totalPortfolioValue) * 100
+        : 0;
+      const portfolioWeightLabel = formatPercent(portfolioWeight);
       const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const normalizedLocation = location.toLowerCase();
       const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
+      const portfolioWeightHtml = isBrokerage
+        ? `<span class="portfolio-location-card__weight">PESO EN PORTAFOLIO: ${escapeHtml(portfolioWeightLabel)}</span>`
+        : '';
       const brokerLogo = isBrokerage
         ? `<span class="portfolio-location-card__logo"><img src="${import.meta.env.BASE_URL}logos/holdings/${normalizedLocation}.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" /></span>`
         : '';
@@ -109,6 +124,7 @@ export function renderPortfolioTemplate(
                   </h3>
                   ${countBadge}
                 </div>
+                ${portfolioWeightHtml}
               </div>
             </div>
             <div class="portfolio-location-card__numbers">
