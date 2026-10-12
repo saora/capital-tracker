@@ -25,11 +25,6 @@ export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
 ): PortfolioViewModel {
-  console.log("DEBUG: SE EJECUTA PORTFOLIO PRESENTER", {
-    investmentsCount: investments.length,
-    firstSymbol: investments[0]?.symbol,
-  });
-
   const positions: PortfolioPosition[] = investments
     .filter(
       (item) =>
@@ -43,12 +38,6 @@ export function presentPortfolio(
       const gain = value - cost;
       const gainPercent = cost !== 0 ? (gain / cost) * 100 : 0;
       const dailyChange = item.dailyChangePercent;
-
-      console.log("DEBUG PORTFOLIO PRESENTER", {
-        symbol: item.symbol,
-        dailyChangePercent: item.dailyChangePercent,
-        dailyChangeLabel: formatDailyChange(item.dailyChangePercent),
-      });
 
       const hasDailyChange =
         typeof dailyChange === "number" && Number.isFinite(dailyChange);
@@ -82,6 +71,15 @@ export function presentPortfolio(
         gainClass: gain >= 0 ? "text-positive" : "text-negative",
       };
     });
+
+  positions.sort((a, b) => {
+    const getGainPercent = (position: PortfolioPosition): number => {
+      const match = position.gainLabel.match(/\((-?\d+(?:\.\d+)?)%\)/);
+      return match ? Number(match[1]) : 0;
+    };
+
+    return getGainPercent(b) - getGainPercent(a);
+  });
 
   return {
     positions,
