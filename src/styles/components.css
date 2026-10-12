@@ -211,6 +211,53 @@
   padding: 0 var(--space-4);
 }
 
+.portfolio-location-list {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.portfolio-location-card {
+  padding: var(--space-4);
+}
+
+.portfolio-location-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.portfolio-location-card__title {
+  margin: 0;
+  font-size: 17px;
+}
+
+.portfolio-location-card__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-2);
+  color: var(--color-brand-900);
+  background: var(--color-brand-100);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.portfolio-location-card__holdings .holding-row:first-child {
+  padding-top: var(--space-3);
+}
+
+.portfolio-location-card__holdings .holding-row:last-child {
+  padding-bottom: 0;
+}
+
 .holding-row {
   display: flex;
   align-items: center;
@@ -327,5 +374,65 @@
 
   .portfolio-holding__gain {
     font-size: 0.6875rem;
+  }
+}
+
+
+.portfolio-location-card__performance {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  text-align: right;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-location-card__performance strong {
+  font-weight: 750;
+}
+
+.portfolio-location-card__performance span {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.portfolio-summary-card__performance {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.portfolio-summary-card__label {
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.portfolio-summary-card__performance strong {
+  font-size: 0.9375rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 420px) {
+  .portfolio-location-card__header {
+    align-items: flex-start;
+  }
+
+  .portfolio-location-card__title {
+    font-size: 17px;
+  }
+
+  .portfolio-location-card__performance {
+    gap: 0.2rem;
+    font-size: 17px;
+  }
+
+  .portfolio-location-card__performance span {
+    font-size: 17px;
   }
 }

@@ -6,6 +6,10 @@ export interface PortfolioPosition {
   assetType: AssetType;
   currency: Currency;
   location: string;
+  currentValue: number;
+  investedValue: number;
+  gainValue: number;
+  gainPercent: number;
   valueLabel: string;
   currentPriceLabel: string;
   dailyChangeLabel: string;
@@ -20,5 +24,10 @@ export interface PortfolioPosition {
 export interface PortfolioViewModel {
   positions: PortfolioPosition[];
   totalPositions: number;
+  totalValueLabel: string;
+  totalGainAmountLabel: string;
+  totalPerformanceLabel: string;
+  totalGainClass: 'text-positive' | 'text-negative';
+  currency: Currency;
   disclaimer: string;
 }
