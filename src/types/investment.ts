@@ -17,6 +17,8 @@ export interface Investment {
   averageCost: number;
   currentPrice: number;
   dailyChangePercent?: number | null;
+  /** Brokerage or platform configured in the Portfolio control sheet. */
+  location?: string;
 }
 
 export interface InvestmentPosition extends Investment {
