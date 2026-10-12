@@ -7,9 +7,20 @@ function formatMarketPrice(value: number, currency: string): string {
     style: "currency",
     currency,
     currencyDisplay: "narrowSymbol",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: value >= 1_000_000 ? 0 : 2,
+    maximumFractionDigits: value >= 1_000_000 ? 0 : 2,
   }).format(value);
+}
+
+function formatPositionValue(value: number, currency: string): string {
+  const formatted = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: value >= 1_000_000 ? 0 : 2,
+    maximumFractionDigits: value >= 1_000_000 ? 0 : 2,
+  }).format(value);
+
+  const symbol = currency === "MXN" ? "$" : `${currency} `;
+
+  return `${symbol}${formatted}`;
 }
 
 function formatDailyChange(value: number | null | undefined): string {
@@ -63,7 +74,7 @@ export function presentPortfolio(
         name: item.name,
         assetType: item.assetType,
         currency: item.currency,
-        valueLabel: formatCurrency(value, item.currency),
+        valueLabel: formatPositionValue(value, item.currency),
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
         dailyChangeClass,
