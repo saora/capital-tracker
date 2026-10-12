@@ -74,6 +74,7 @@ export function presentPortfolio(
         name: item.name,
         assetType: item.assetType,
         currency: item.currency,
+        location: item.location || "Sin ubicación",
         valueLabel: formatPositionValue(value, item.currency),
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
@@ -84,6 +85,9 @@ export function presentPortfolio(
     });
 
   positions.sort((a, b) => {
+    const locationOrder = a.location.localeCompare(b.location, "es-MX");
+    if (locationOrder !== 0) return locationOrder;
+
     const getGainPercent = (position: PortfolioPosition): number => {
       const match = position.gainLabel.match(/\((-?\d+(?:\.\d+)?)%\)/);
       return match ? Number(match[1]) : 0;

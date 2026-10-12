@@ -73,7 +73,11 @@ export function presentHoldingsList({
       );
     }
 
-    return investment.assetType === "stock" || investment.assetType === "etf";
+    return (
+      investment.assetType === "stock" ||
+      investment.assetType === "etf" ||
+      investment.assetType === "crypto"
+    );
   });
 
   const visibleInvestments =
@@ -81,7 +85,23 @@ export function presentHoldingsList({
       ? filteredInvestments
       : filteredInvestments.slice(0, limit);
 
-  const holdingsHtml = visibleInvestments.map(renderHolding).join("");
+  const investmentsByLocation = new Map<string, Investment[]>();
+
+  visibleInvestments.forEach((investment) => {
+    const location = investment.location?.trim() || "Sin ubicación";
+    const group = investmentsByLocation.get(location) ?? [];
+    group.push(investment);
+    investmentsByLocation.set(location, group);
+  });
+
+  const holdingsHtml = Array.from(investmentsByLocation.entries())
+    .map(([location, holdings]) => `
+      <section class="holdings-location-group">
+        <h3 class="holdings-location-group__title">${escapeHtml(location)}</h3>
+        ${holdings.map(renderHolding).join("")}
+      </section>
+    `)
+    .join("");
 
   const emptyMessage = isBankAccountsCategory
     ? "No hay cuentas bancarias registradas."
