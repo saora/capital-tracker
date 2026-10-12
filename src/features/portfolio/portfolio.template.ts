@@ -82,17 +82,24 @@ export function renderPortfolioTemplate(
       const performance = invested > 0 ? (gain / invested) * 100 : 0;
       const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
       const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
+      const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
       const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
+      const performanceLabel = formatPercent(performance);
       const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const isGbm = location.toLowerCase() === 'gbm';
-      const countBadge = isGbm
-        ? `<span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} acciones">${positions.length}</span>`
+      const normalizedLocation = location.toLowerCase();
+      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
+      const brokerLogo = isBrokerage
+        ? `<span class="portfolio-location-card__logo"><img src="${import.meta.env.BASE_URL}logos/holdings/${normalizedLocation}.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" /></span>`
+        : '';
+      const countBadge = isBrokerage
+        ? `<span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>`
         : '';
 
       return `
         <section class="card portfolio-location-card" aria-labelledby="portfolio-location-${escapeHtml(locationId)}">
           <header class="portfolio-location-card__header holding-row">
             <div class="portfolio-location-card__identity">
+              ${brokerLogo}
               <div class="portfolio-location-card__name">
                 <div class="portfolio-location-card__title-line">
                   <h3
@@ -102,12 +109,14 @@ export function renderPortfolioTemplate(
                   </h3>
                   ${countBadge}
                 </div>
-                <span class="portfolio-location-card__total-value">${escapeHtml(currentValueLabel)}</span>
               </div>
             </div>
-            <div class="holding-row__numbers portfolio-location-card__performance ${gainClass}">
-              <strong>${escapeHtml(formatPercent(performance))}</strong>
-              <span>(${escapeHtml(amountLabel)})</span>
+            <div class="portfolio-location-card__numbers">
+              <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
+              <div class="portfolio-location-card__performance">
+                <span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span>
+                <span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>
+              </div>
             </div>
           </header>
           <div class="portfolio-location-card__holdings">
