@@ -1,5 +1,5 @@
 import type { Investment } from "../../types/investment";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, formatPercent } from "../../utils/formatters";
 import type { PortfolioPosition, PortfolioViewModel } from "./portfolio.types";
 
 function formatMarketPrice(value: number, currency: string): string {
@@ -32,6 +32,11 @@ function formatDailyChange(value: number | null | undefined): string {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+function formatSignedCurrency(value: number, currency: "MXN" | "USD"): string {
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}${formatCurrency(Math.abs(value), currency)}`;
+}
+
 export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
@@ -54,7 +59,6 @@ export function presentPortfolio(
         typeof dailyChange === "number" && Number.isFinite(dailyChange);
 
       const gainAmountLabel = formatCurrency(Math.abs(gain), item.currency);
-
       const gainLabel =
         `${gain > 0 ? "+" : gain < 0 ? "-" : ""}${gainAmountLabel} ` +
         `(${gainPercent.toFixed(2)}%)`;
@@ -75,6 +79,10 @@ export function presentPortfolio(
         assetType: item.assetType,
         currency: item.currency,
         location: item.location || "Sin ubicación",
+        currentValue: value,
+        investedValue: cost,
+        gainValue: gain,
+        gainPercent,
         valueLabel: formatPositionValue(value, item.currency),
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
@@ -87,18 +95,24 @@ export function presentPortfolio(
   positions.sort((a, b) => {
     const locationOrder = a.location.localeCompare(b.location, "es-MX");
     if (locationOrder !== 0) return locationOrder;
-
-    const getGainPercent = (position: PortfolioPosition): number => {
-      const match = position.gainLabel.match(/\((-?\d+(?:\.\d+)?)%\)/);
-      return match ? Number(match[1]) : 0;
-    };
-
-    return getGainPercent(b) - getGainPercent(a);
+    return b.gainPercent - a.gainPercent;
   });
+
+  // The current Google Sheets service normalizes all position values to MXN.
+  const currency = positions[0]?.currency ?? "MXN";
+  const totalValue = positions.reduce((total, position) => total + position.currentValue, 0);
+  const investedValue = positions.reduce((total, position) => total + position.investedValue, 0);
+  const totalGain = totalValue - investedValue;
+  const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
 
   return {
     positions,
     totalPositions: positions.length,
+    totalValueLabel: formatCurrency(totalValue, currency),
+    totalGainAmountLabel: formatSignedCurrency(totalGain, currency),
+    totalPerformanceLabel: formatPercent(totalPerformance),
+    totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
+    currency,
     disclaimer: connected
       ? "Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja."
       : "Datos ficticios. Los valores están en la moneda indicada por activo.",
