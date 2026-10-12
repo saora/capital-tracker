@@ -1,4 +1,3 @@
-
 export type AssetType =
   | 'stock'
   | 'etf'
@@ -17,6 +16,7 @@ export interface Investment {
   quantity: number;
   averageCost: number;
   currentPrice: number;
+  dailyChangePercent?: number | null;
 }
 
 export interface InvestmentPosition extends Investment {

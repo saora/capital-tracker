@@ -1,4 +1,3 @@
-
 import type { AssetType, Currency } from '../../types/investment';
 
 export interface PortfolioPosition {
@@ -7,7 +6,13 @@ export interface PortfolioPosition {
   assetType: AssetType;
   currency: Currency;
   valueLabel: string;
-  gainPercentLabel: string;
+  currentPriceLabel: string;
+  dailyChangeLabel: string;
+  dailyChangeClass:
+    | 'text-positive'
+    | 'text-negative'
+    | 'text-muted';
+  gainLabel: string;
   gainClass: 'text-positive' | 'text-negative';
 }
 

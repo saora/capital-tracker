@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-10-10T05:11:49.282Z",
+  "updatedAt": "2026-10-12T06:27:38.029Z",
   "baseCurrency": "MXN",
   "exchangeRate": {
-    "USD_MXN": 18.388,
+    "USD_MXN": 18.4086,
     "source": "Yahoo Finance (endpoint no oficial)"
   },
   "prices": {
@@ -10,8 +10,10 @@
       "symbol": "META",
       "providerSymbol": "META",
       "price": 718.67,
+      "previousClose": 728.08,
+      "dailyChangePercent": -1.292440391165817,
       "currency": "USD",
-      "priceMXN": 13214.90396,
+      "priceMXN": 13229.708562,
       "timestamp": "2026-10-09T20:00:01.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -20,8 +22,10 @@
       "symbol": "VOO",
       "providerSymbol": "VOO",
       "price": 715.59,
+      "previousClose": 707.54,
+      "dailyChangePercent": 1.137744862481283,
       "currency": "USD",
-      "priceMXN": 13158.268920000002,
+      "priceMXN": 13173.010074,
       "timestamp": "2026-10-09T20:00:00.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -30,8 +34,10 @@
       "symbol": "QQQ",
       "providerSymbol": "QQQ",
       "price": 751.27,
+      "previousClose": 749.58,
+      "dailyChangePercent": 0.22545959070411978,
       "currency": "USD",
-      "priceMXN": 13814.352760000002,
+      "priceMXN": 13829.828921999999,
       "timestamp": "2026-10-09T20:00:00.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -40,8 +46,10 @@
       "symbol": "MSFT",
       "providerSymbol": "MSFT",
       "price": 535.07,
+      "previousClose": 517.53,
+      "dailyChangePercent": 3.389175506733924,
       "currency": "USD",
-      "priceMXN": 9838.867160000002,
+      "priceMXN": 9849.889602000001,
       "timestamp": "2026-10-09T20:00:01.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -50,8 +58,10 @@
       "symbol": "GOOG",
       "providerSymbol": "GOOG",
       "price": 347.86,
+      "previousClose": 340.35,
+      "dailyChangePercent": 2.2065520787424684,
       "currency": "USD",
-      "priceMXN": 6396.449680000001,
+      "priceMXN": 6403.615596000001,
       "timestamp": "2026-10-09T20:00:01.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -60,8 +70,10 @@
       "symbol": "NVDA",
       "providerSymbol": "NVDA",
       "price": 229.28,
+      "previousClose": 233.95,
+      "dailyChangePercent": -1.9961530241504544,
       "currency": "USD",
-      "priceMXN": 4216.00064,
+      "priceMXN": 4220.723808,
       "timestamp": "2026-10-09T20:00:00.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -69,9 +81,11 @@
     "WALMEX": {
       "symbol": "WALMEX",
       "providerSymbol": "WALMEX.MX",
-      "price": 47.26,
+      "price": 47.3,
+      "previousClose": 46.45,
+      "dailyChangePercent": 1.8299246501614514,
       "currency": "MXN",
-      "priceMXN": 47.26,
+      "priceMXN": 47.3,
       "timestamp": "2026-10-09T19:59:58.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -79,9 +93,11 @@
     "IVVPESOISHRS": {
       "symbol": "IVVPESOISHRS",
       "providerSymbol": "IVVPESOISHRS.MX",
-      "price": 158.85,
+      "price": 158.81,
+      "previousClose": 157.56,
+      "dailyChangePercent": 0.7933485656257934,
       "currency": "MXN",
-      "priceMXN": 158.85,
+      "priceMXN": 158.81,
       "timestamp": "2026-10-09T19:50:16.000Z",
       "source": "Yahoo Finance (endpoint no oficial)",
       "status": "ok"
@@ -89,10 +105,12 @@
     "BTC": {
       "symbol": "BTC",
       "providerSymbol": "bitcoin",
-      "price": 1521256,
+      "price": 1541098,
+      "previousClose": null,
+      "dailyChangePercent": 0.8655969524078004,
       "currency": "MXN",
-      "priceMXN": 1521256,
-      "timestamp": "2026-10-10T05:11:50.938Z",
+      "priceMXN": 1541098,
+      "timestamp": "2026-10-12T06:27:39.964Z",
       "source": "CoinGecko",
       "status": "ok"
     }

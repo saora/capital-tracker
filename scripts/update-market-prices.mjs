@@ -1,4 +1,3 @@
-
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,8 +13,6 @@ const REQUEST_HEADERS = {
   Accept: 'application/json',
 };
 
-// Clave interna: símbolos que aparecen en Google Sheets.
-// Candidatos: símbolos utilizados por el proveedor de precios.
 const SYMBOLS = {
   META: ['META'],
   VOO: ['VOO'],
@@ -60,6 +57,12 @@ async function getYahooQuote(providerSymbol) {
   const meta = result.meta ?? {};
   const closes = result.indicators?.quote?.[0]?.close ?? [];
 
+  const rawPreviousClose = Number(meta.chartPreviousClose);
+  const previousClose =
+    Number.isFinite(rawPreviousClose) && rawPreviousClose > 0
+      ? rawPreviousClose
+      : null;
+
   let price = Number(meta.regularMarketPrice);
 
   if (!Number.isFinite(price) || price <= 0) {
@@ -76,13 +79,21 @@ async function getYahooQuote(providerSymbol) {
 
   const timestamp = Number(meta.regularMarketTime);
 
+  const dailyChangePercent =
+    previousClose !== null
+      ? ((price - previousClose) / previousClose) * 100
+      : null;
+
   return {
     providerSymbol,
     price,
+    previousClose,
+    dailyChangePercent,
     currency: meta.currency ?? null,
-    timestamp: timestamp > 0
-      ? new Date(timestamp * 1000).toISOString()
-      : null,
+    timestamp:
+      timestamp > 0
+        ? new Date(timestamp * 1000).toISOString()
+        : null,
   };
 }
 
@@ -109,17 +120,25 @@ async function getBitcoinMxn() {
 
   const data = await fetchJson(
     'https://api.coingecko.com/api/v3/simple/price' +
-      '?ids=bitcoin&vs_currencies=mxn',
+    '?ids=bitcoin&vs_currencies=mxn&include_24hr_change=true',
     { headers },
   );
 
   const price = Number(data.bitcoin?.mxn);
+  const rawChange = data.bitcoin?.mxn_24h_change;
+  const dailyChangePercent =
+    typeof rawChange === 'number' && Number.isFinite(rawChange)
+      ? rawChange
+      : null;
 
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error('CoinGecko no devolvió un precio válido para BTC');
   }
 
-  return price;
+  return {
+    price,
+    dailyChangePercent,
+  };
 }
 
 async function getAssetPrice(symbol, candidates, usdMxn) {
@@ -145,6 +164,8 @@ async function getAssetPrice(symbol, candidates, usdMxn) {
         symbol,
         providerSymbol: quote.providerSymbol,
         price: quote.price,
+        previousClose: quote.previousClose,
+        dailyChangePercent: quote.dailyChangePercent,
         currency: quote.currency,
         priceMXN,
         timestamp: quote.timestamp,
@@ -152,7 +173,10 @@ async function getAssetPrice(symbol, candidates, usdMxn) {
         status: priceMXN === null ? 'missing-fx' : 'ok',
       };
     } catch (error) {
-      errors.push(`${providerSymbol}: ${error.message}`);
+      errors.push(
+        `${providerSymbol}: ${error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 
@@ -160,6 +184,8 @@ async function getAssetPrice(symbol, candidates, usdMxn) {
     symbol,
     providerSymbol: null,
     price: null,
+    previousClose: null,
+    dailyChangePercent: null,
     currency: null,
     priceMXN: null,
     timestamp: null,
@@ -180,8 +206,11 @@ async function main() {
     usdMxn = await getUsdMxnRate();
     console.log(`USD/MXN: ${usdMxn}`);
   } catch (error) {
-    errors.push(`USD/MXN: ${error.message}`);
-    console.error('No se pudo obtener USD/MXN:', error.message);
+    const message =
+      error instanceof Error ? error.message : String(error);
+
+    errors.push(`USD/MXN: ${message}`);
+    console.error('No se pudo obtener USD/MXN:', message);
   }
 
   for (const [symbol, candidates] of Object.entries(SYMBOLS)) {
@@ -201,40 +230,55 @@ async function main() {
       `${symbol}:`,
       quote.priceMXN === null
         ? quote.status
-        : `MXN ${quote.priceMXN.toFixed(2)}`,
+        : `MXN ${quote.priceMXN.toFixed(2)} | variación diaria ${quote.dailyChangePercent === null
+          ? 'N/D'
+          : `${quote.dailyChangePercent.toFixed(2)}%`
+        }`,
     );
   }
 
   try {
-    const btcPrice = await getBitcoinMxn();
+    const btcQuote = await getBitcoinMxn();
 
     prices.BTC = {
       symbol: 'BTC',
       providerSymbol: 'bitcoin',
-      price: btcPrice,
+      price: btcQuote.price,
+      previousClose: null,
+      dailyChangePercent: btcQuote.dailyChangePercent,
       currency: 'MXN',
-      priceMXN: btcPrice,
+      priceMXN: btcQuote.price,
       timestamp: new Date().toISOString(),
       source: 'CoinGecko',
       status: 'ok',
     };
 
-    console.log(`BTC: MXN ${btcPrice.toFixed(2)}`);
+    console.log(
+      `BTC: MXN ${btcQuote.price.toFixed(2)} | variación 24 h ${btcQuote.dailyChangePercent === null
+        ? 'N/D'
+        : `${btcQuote.dailyChangePercent.toFixed(2)}%`
+      }`,
+    );
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error);
+
     prices.BTC = {
       symbol: 'BTC',
       providerSymbol: 'bitcoin',
       price: null,
+      previousClose: null,
+      dailyChangePercent: null,
       currency: 'MXN',
       priceMXN: null,
       timestamp: null,
       source: 'CoinGecko',
       status: 'unavailable',
-      error: error.message,
+      error: message,
     };
 
-    errors.push(`BTC: ${error.message}`);
-    console.error('No se pudo obtener BTC:', error.message);
+    errors.push(`BTC: ${message}`);
+    console.error('No se pudo obtener BTC:', message);
   }
 
   const output = {
@@ -249,13 +293,13 @@ async function main() {
   };
 
   await mkdir(dirname(OUTPUT), { recursive: true });
-  await writeFile(OUTPUT, `${JSON.stringify(output, null, 2)}\n`);
+  await writeFile(
+    OUTPUT,
+    `${JSON.stringify(output, null, 2)}\n`,
+  );
 
   console.log(`\nArchivo generado: ${OUTPUT}`);
   console.log(`Errores detectados: ${errors.length}`);
-
-  // No fallar toda la ejecución por un símbolo aislado.
-  // El JSON conserva el estado de cada cotización.
 }
 
 main().catch((error) => {
