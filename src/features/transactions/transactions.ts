@@ -216,18 +216,23 @@ export function renderTransactions(
         </form>
       </section>
 
-      <dialog class="movement-confirm-dialog" id="movement-delete-dialog" aria-labelledby="movement-delete-title">
+      <dialog class="movement-confirm-dialog" id="movement-action-dialog" aria-labelledby="movement-action-title" aria-describedby="movement-action-message">
         <div class="movement-confirm-dialog__content">
-          <h2 id="movement-delete-title">Eliminar movimiento</h2>
-          <p>¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
+          <h2 id="movement-action-title">Confirmar acción</h2>
+          <p id="movement-action-message">¿Deseas continuar?</p>
           <div class="movement-confirm-dialog__actions">
-            <button type="button" class="button" data-movement-delete-cancel>Cancelar</button>
-            <button type="button" class="button button--danger" data-movement-delete-confirm>Eliminar</button>
+            <button type="button" class="button" data-movement-action-cancel>Cancelar</button>
+            <button type="button" class="button button--primary" data-movement-action-confirm>Aceptar</button>
           </div>
         </div>
       </dialog>
 
-      <section class="dashboard__section">
+      <div class="movement-success-toast" id="movement-success-toast" role="status" aria-live="polite" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-7"/></svg>
+        <span id="movement-success-message"></span>
+      </div>
+
+      <section class="dashboard__section" id="movement-history-section">
         <div class="section-heading">
           <h2>Historial</h2>
           <span class="section-count">${filteredMovements.length}</span>
