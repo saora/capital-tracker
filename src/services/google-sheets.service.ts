@@ -1,7 +1,6 @@
 import { signInWithGoogle } from "./google-auth.service";
 import type { Investment, AssetType } from "../types/investment";
 import type { PortfolioSummary, ChartPoint } from "../types/portfolio";
-import { getMarketPrices } from "./market-prices.service";
 import {
   savePortfolioSnapshot,
   getPortfolioHistory,
@@ -129,63 +128,18 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
       }
 
       return {
-        investment: makeInvestment(
-          `fixed-${index}-${platform}`,
-          platform.toUpperCase(),
-          platform,
-          "fixed-income",
-          invested,
-          currentValue,
-        ),
-        invested,
-        currentValue,
-      };
-    })
-    .filter((item): item is ParsedInvestment => item !== null);
-}
-
-function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
-  const activeAssets = new Map<string, string>();
-
-  rows.forEach((row) => {
-    const symbol = normalize(row[0]);
-    const location = String(row[1] ?? "").trim();
-    const status = normalize(row[2]);
-
-    if (symbol && status === "activo") {
-      activeAssets.set(symbol, location || "Sin ubicación");
-    }
-  });
-
-  return activeAssets;
-}
-
-function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
-  return rows
-    .map((row, index) => {
-      const symbol = String(row[0] ?? "").trim();
-      const invested = toNumber(row[9]);
-      const currentValue = toNumber(row[10]);
-      const quantity = toNumber(row[7]);
-
-      if (
-        !symbol ||
-        ["total", "total general", "subtotal"].includes(normalize(symbol)) ||
-        (invested === 0 && currentValue === 0)
-      ) {
-        return null;
-      }
-
-      return {
-        investment: makeInvestment(
-          `variable-${index}-${symbol}`,
-          symbol.toUpperCase(),
-          symbol.toUpperCase(),
-          getAssetType(symbol),
-          invested,
-          currentValue,
-          quantity,
-        ),
+        investment: {
+          ...makeInvestment(
+            `variable-${index}-${symbol}`,
+            symbol.toUpperCase(),
+            symbol.toUpperCase(),
+            getAssetType(symbol),
+            invested,
+            currentValue,
+            quantity,
+          ),
+          dailyChangePercent,
+        },
         invested,
         currentValue,
       };
@@ -200,7 +154,7 @@ export async function getInvestmentSheetsData(
 
   const [investmentRows, variableRows, portfolioControlRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
-    readRange(token, "'Renta variable'!A11:M"),
+    readRange(token, "'Renta variable'!A12:N27"),
     readRange(token, "'Portfolio'!A2:C"),
   ]);
 
@@ -217,61 +171,9 @@ export async function getInvestmentSheetsData(
       },
     }));
 
-  let marketPrices: Awaited<ReturnType<typeof getMarketPrices>> = {};
-
-  try {
-    marketPrices = await getMarketPrices();
-    console.log("Precios externos cargados correctamente.");
-  } catch (error) {
-    console.warn(
-      "No se pudieron cargar los precios externos. Se usarán los valores de Google Sheets.",
-      error,
-    );
-  }
-
-  const variableIncome = variableIncomeFromSheets.map((item) => {
-    const symbol = item.investment.symbol.trim().toUpperCase();
-    const quote = marketPrices[symbol];
-    const priceMXN = quote?.priceMXN;
-
-    console.log("DEBUG VARIACIÓN DIARIA", {
-      symbol,
-      dailyChangePercent: quote?.dailyChangePercent,
-      status: quote?.status,
-    });
-
-    if (
-      quote?.status !== "ok" ||
-      typeof priceMXN !== "number" ||
-      !Number.isFinite(priceMXN) ||
-      priceMXN <= 0
-    ) {
-      console.warn(`Se conserva el precio de Google Sheets para ${symbol}.`);
-
-      return {
-        ...item,
-        investment: {
-          ...item.investment,
-          dailyChangePercent: null,
-        },
-      };
-    }
-
-    const currentValue = item.investment.quantity * priceMXN;
-
-    console.log(`${symbol}: precio actualizado a MXN ${priceMXN.toFixed(2)}`);
-
-    return {
-      ...item,
-      currentValue,
-      investment: {
-        ...item.investment,
-        currentPrice: priceMXN,
-        dailyChangePercent: quote.dailyChangePercent ?? null,
-      },
-    };
-  });
-
+  // Google Sheets is the source of truth for variable-income values.
+  // Do not overwrite its formula-calculated values with a second market feed.
+  const variableIncome = variableIncomeFromSheets;
   const parsedInvestments = [...fixedIncome, ...variableIncome];
 
   if (parsedInvestments.length === 0) {
