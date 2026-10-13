@@ -230,17 +230,11 @@ export function renderTransactions(
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
-            <span>Total (importe + comisión)</span>
+            <span>Total</span>
             <input name="total" type="text" placeholder="$0.00" readonly aria-readonly="true" data-trade-total disabled />
           </label>
 
-          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
-            <span>Tipo de moneda</span>
-            <select name="currency" disabled>
-              <option value="MXN">MXN — Peso mexicano</option>
-              <option value="USD">USD — Dólar estadounidense</option>
-            </select>
-          </label>
+          <input name="currency" type="hidden" value="MXN" />
 
           <label class="movement-field movement-field--full" data-field-category="all">
             <span>Notas (opcional)</span>
