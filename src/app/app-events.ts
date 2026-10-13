@@ -222,45 +222,101 @@ export function initializeAppEvents(
       return;
     }
     const cancelEdit = target.closest<HTMLButtonElement>("[data-movement-cancel]");
-    if (cancelEdit) { renderPage(app); return; }
+    if (cancelEdit) {
+      const form = app.querySelector<HTMLFormElement>("#movement-form");
+      const card = app.querySelector<HTMLElement>("#movement-form-card");
+      const add = app.querySelector<HTMLButtonElement>("[data-movement-form-toggle]");
+      if (form) { delete form.dataset.editId; form.reset(); }
+      if (card) card.hidden = true;
+      if (add) add.hidden = false;
+      renderPage(app);
+      return;
+    }
+
     const editButton = target.closest<HTMLButtonElement>("[data-movement-edit]");
     if (editButton) {
       const movement = appState.movements.find((item) => item.id === editButton.dataset.movementEdit);
       const form = app.querySelector<HTMLFormElement>("#movement-form");
       const card = app.querySelector<HTMLElement>("#movement-form-card");
       const add = app.querySelector<HTMLButtonElement>("[data-movement-form-toggle]");
-      if (!movement || !form || !card) return;
+      if (!movement || !form || !card) { window.alert("No se encontró la información de este movimiento. Actualiza el historial e inténtalo de nuevo."); return; }
+      form.reset();
       form.dataset.editId = movement.id;
-      const radio = form.querySelector<HTMLInputElement>(`input[name="category"][value="${movement.category}"]`);
-      if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
-      const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]');
-      if (concept) { concept.value = movement.concept; concept.dispatchEvent(new Event("change", { bubbles: true })); }
-      form.querySelector<HTMLInputElement>('input[name="date"]')!.value = movement.date;
-      const account = form.querySelector<HTMLSelectElement>(movement.category === "Acciones" ? "#movement-asset" : "#movement-account");
-      if (account) account.value = movement.account;
-      form.querySelector<HTMLInputElement>('input[name="amount"]')!.value = String(movement.amount);
-      form.querySelector<HTMLTextAreaElement>('textarea[name="notes"]')!.value = movement.notes;
+      const categoryRadio = form.querySelector<HTMLInputElement>(`input[name="category"][value="${movement.category}"]`);
+      if (categoryRadio) { categoryRadio.checked = true; categoryRadio.dispatchEvent(new Event("change", { bubbles: true })); }
+      const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+      if (conceptSelect) {
+        const option = Array.from(conceptSelect.options).find((item) => item.value === movement.concept);
+        if (option) option.hidden = false;
+        conceptSelect.value = movement.concept;
+        conceptSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      const dateInput = form.querySelector<HTMLInputElement>('input[name="date"]');
+      const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
+      const notesInput = form.querySelector<HTMLTextAreaElement>('textarea[name="notes"]');
+      const accountSelect = form.querySelector<HTMLSelectElement>(movement.category === "Acciones" ? "#movement-asset" : "#movement-account");
+      if (dateInput) dateInput.value = movement.date;
+      if (accountSelect) {
+        if (!Array.from(accountSelect.options).some((option) => option.value === movement.account)) {
+          const option = document.createElement("option"); option.value = movement.account; option.textContent = movement.account; accountSelect.append(option);
+        }
+        accountSelect.value = movement.account; accountSelect.disabled = false; accountSelect.required = true;
+      }
+      if (amountInput) amountInput.value = String(movement.amount);
+      if (notesInput) notesInput.value = movement.notes;
       const quantity = form.querySelector<HTMLInputElement>('input[name="quantity"]');
       const average = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
-      if (quantity) quantity.value = movement.quantity === undefined ? "" : String(movement.quantity);
-      if (average) average.value = movement.averageCost === undefined ? "" : String(movement.averageCost);
+      const needsQuantity = movement.category === "Acciones" && ["Compra", "Venta"].includes(movement.concept);
+      const needsAverage = movement.category === "Acciones" && movement.concept === "Compra";
+      if (quantity) { quantity.value = movement.quantity === undefined ? "" : String(movement.quantity); quantity.disabled = !needsQuantity; quantity.required = needsQuantity; quantity.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsQuantity; }
+      if (average) { average.value = movement.averageCost === undefined ? "" : String(movement.averageCost); average.disabled = !needsAverage; average.required = needsAverage; average.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsAverage; }
       form.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento";
       form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios";
       form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
+      const status = form.querySelector<HTMLElement>("#movement-form-status");
+      if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
       card.hidden = false; if (add) add.hidden = true;
       card.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    const deleteButton = target.closest<HTMLButtonElement>("[data-movement-delete]");
-    if (deleteButton) {
-      const id = deleteButton.dataset.movementDelete;
-      if (!id || !window.confirm("¿Eliminar este movimiento? Esta acción no se puede deshacer.")) return;
-      const token = getSessionAccessToken(); deleteButton.disabled = true;
-      void (async () => { try { if (!token) throw new Error("La sesión de Google expiró."); await deleteMovement(token, id); appState.movements = appState.movements.filter((item) => item.id !== id); renderPage(app); } catch (error) { deleteButton.disabled = false; window.alert(error instanceof Error ? error.message : "No fue posible eliminar el movimiento."); } })();
+      dateInput?.focus({ preventScroll: true });
       return;
     }
 
-    const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
+    const deleteButton = target.closest<HTMLButtonElement>("[data-movement-delete]");
+    if (deleteButton) {
+      const id = deleteButton.dataset.movementDelete;
+      const dialog = app.querySelector<HTMLDialogElement>("#movement-delete-dialog");
+      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-delete-confirm]");
+      if (!id || !dialog || !confirmButton) return;
+      dialog.dataset.movementId = id; confirmButton.disabled = false;
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+
+    const cancelDelete = target.closest<HTMLButtonElement>("[data-movement-delete-cancel]");
+    if (cancelDelete) { app.querySelector<HTMLDialogElement>("#movement-delete-dialog")?.close(); return; }
+
+    const confirmDelete = target.closest<HTMLButtonElement>("[data-movement-delete-confirm]");
+    if (confirmDelete) {
+      const dialog = confirmDelete.closest<HTMLDialogElement>("#movement-delete-dialog");
+      const id = dialog?.dataset.movementId;
+      const token = getSessionAccessToken();
+      if (!id || !dialog) return;
+      confirmDelete.disabled = true;
+      void (async () => {
+        try {
+          if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión.");
+          await deleteMovement(token, id);
+          appState.movements = appState.movements.filter((item) => item.id !== id);
+          dialog.close(); renderPage(app);
+        } catch (error) {
+          confirmDelete.disabled = false;
+          window.alert(error instanceof Error ? error.message : "No fue posible eliminar el movimiento.");
+        }
+      })();
+      return;
+    }
+
+      const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
     if (movementPeriodElement) {
       const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined;
       if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) {
