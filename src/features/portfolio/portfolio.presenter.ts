@@ -93,22 +93,9 @@ export function presentPortfolio(
     });
 
   positions.sort((a, b) => {
-    const getLocationPriority = (location: string): number => {
-      const normalized = location.trim().toLocaleLowerCase("es-MX");
-      if (normalized === "gbm") return 0;
-      if (normalized === "bitso") return 1;
-      return 2;
-    };
-
-    const locationPriority = getLocationPriority(a.location) - getLocationPriority(b.location);
-    if (locationPriority !== 0) return locationPriority;
-
-    if (getLocationPriority(a.location) === 2) {
-      const locationOrder = a.location.localeCompare(b.location, "es-MX");
-      if (locationOrder !== 0) return locationOrder;
-    }
-
-    return b.currentValue - a.currentValue;
+    const locationOrder = a.location.localeCompare(b.location, "es-MX");
+    if (locationOrder !== 0) return locationOrder;
+    return b.gainPercent - a.gainPercent;
   });
 
   // The current Google Sheets service normalizes all position values to MXN.
@@ -127,13 +114,7 @@ export function presentPortfolio(
     totalValueLabel: formatCurrency(totalValue, currency),
     totalGainAmountLabel,
     totalPerformanceLabel,
-    totalGainClass: sheetGainMatch
-      ? (sheetGainMatch[1].startsWith("-") || sheetGainMatch[2].startsWith("-$")
-        ? "text-negative"
-        : "text-positive")
-      : totalGain >= 0
-        ? "text-positive"
-        : "text-negative",
+    totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,
     disclaimer: connected
       ? "Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja."
