@@ -353,7 +353,6 @@ export function initializeAppEvents(
     const date = String(formData.get("date") ?? "").trim();
     const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones";
     const concept = String(formData.get("concept") ?? "").trim();
-    const account = String(formData.get(category === "Acciones" ? "account" : "account") ?? "").trim();
     const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account");
     const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset");
     const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? "";
