@@ -87,7 +87,7 @@ function getMovementCurrency(form: HTMLFormElement): "MXN" | "USD" {
   const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
   const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
   if (category === "Acciones" && ["Compra", "Venta"].includes(concept ?? "")) {
-    return form.querySelector<HTMLSelectElement>('select[name="currency"]')?.value === "USD" ? "USD" : "MXN";
+    return form.querySelector<HTMLInputElement | HTMLSelectElement>('[name="currency"]')?.value === "USD" ? "USD" : "MXN";
   }
   return "MXN";
 }
@@ -295,7 +295,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
       }
       if (amountInput) amountInput.value = String(movement.amount); if (notesInput) notesInput.value = movement.notes;
       const commissionInput = form.querySelector<HTMLInputElement>('input[name="commission"]');
-      const currencySelect = form.querySelector<HTMLSelectElement>('select[name="currency"]');
+      const currencySelect = form.querySelector<HTMLInputElement>('input[name="currency"]');
       if (commissionInput) commissionInput.value = movement.commission === undefined ? "" : String(movement.commission);
       if (currencySelect) currencySelect.value = movement.currency === "USD" ? "USD" : "MXN";
       const quantity = form.querySelector<HTMLInputElement>('input[name="quantity"]'); const average = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
