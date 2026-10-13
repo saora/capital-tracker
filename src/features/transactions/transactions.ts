@@ -177,7 +177,7 @@ export function renderTransactions(
             </select>
           </label>
 
-          <fieldset class="movement-field movement-field--full movement-direction-field" data-field-category="all">
+          <fieldset class="movement-field movement-field--full movement-direction-field" data-field-category="Acciones" hidden>
             <legend>Tipo de movimiento</legend>
             <div class="movement-direction-toggle" role="radiogroup" aria-label="Tipo de movimiento">
               <label class="movement-direction-option movement-direction-option--in">
