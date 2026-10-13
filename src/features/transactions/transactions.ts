@@ -196,27 +196,27 @@ export function renderTransactions(
             <select name="concept" required>
               <option value="Depósito" data-movement-category="Cuenta bancaria">Depósito</option>
               <option value="Retiro" data-movement-category="Cuenta bancaria">Retiro</option>
-              <option value="Compra" data-movement-category="Acciones" hidden>Compra</option>
-              <option value="Venta" data-movement-category="Acciones" hidden>Venta</option>
-              <option value="Dividendo" data-movement-category="Acciones" hidden>Dividendo</option>
-              <option value="Comisión" data-movement-category="Acciones" hidden>Comisión</option>
-              <option value="Otro" data-movement-category="Acciones" hidden>Otro</option>
+              <option value="Compra" data-movement-category="Acciones" data-movement-direction="Entrada" hidden>Compra</option>
+              <option value="Venta" data-movement-category="Acciones" data-movement-direction="Salida" hidden>Venta</option>
+              <option value="Dividendo" data-movement-category="Acciones" data-movement-direction="Entrada" hidden>Dividendo</option>
+              <option value="Comisión" data-movement-category="Acciones" data-movement-direction="Salida" hidden>Comisión</option>
+              <option value="Otro" data-movement-category="Acciones" data-movement-direction="all" hidden>Otro</option>
             </select>
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
             <span>Número de títulos</span>
-            <input name="quantity" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0" disabled />
+            <input name="quantity" type="number" min="1" step="1" inputmode="numeric" placeholder="0" disabled />
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
             <span>Costo promedio</span>
-            <input name="averageCost" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0.00" disabled />
+            <input name="averageCost" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input min="0.01" required disabled />
           </label>
 
           <label class="movement-field" data-field-category="all">
             <span>Importe (MXN)</span>
-            <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required />
+            <input name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input required />
           </label>
 
           <label class="movement-field movement-field--full" data-field-category="all">
