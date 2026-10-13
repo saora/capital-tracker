@@ -1,6 +1,6 @@
 import { getSessionAccessToken } from '../features/auth/auth';
 import { getInvestmentSheetsData } from '../services/google-sheets.service';
-import { getMovements } from '../services/movements.service';
+import { getCatalog, getMovements } from '../services/movements.service';
 
 import { appState } from './app-state';
 import { renderPage } from './app-renderer';
@@ -23,12 +23,14 @@ export async function connectGoogleSheets(
   renderPage(app);
 
   try {
-    const [investmentData, movements] = await Promise.all([
+    const [investmentData, movements, catalog] = await Promise.all([
       getInvestmentSheetsData(token),
       getMovements(token),
+      getCatalog(token),
     ]);
     appState.investmentData = investmentData;
     appState.movements = movements;
+    appState.catalog = catalog;
   } catch (error) {
     appState.connectionError =
       error instanceof Error
