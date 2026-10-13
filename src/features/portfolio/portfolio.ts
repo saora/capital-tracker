@@ -11,6 +11,10 @@ export function renderPortfolio(connectedData?: InvestmentSheetsData): string {
   });
   
   const investments = connectedData?.investments ?? demoInvestments;
-  const viewModel = presentPortfolio( investments, Boolean(connectedData));
+  const viewModel = presentPortfolio(
+    investments,
+    Boolean(connectedData),
+    connectedData?.gainSummaryText,
+  );
   return renderPortfolioTemplate(viewModel);
 }

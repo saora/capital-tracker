@@ -494,9 +494,17 @@
 }
 
 .portfolio-summary-card__performance strong {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
   font-size: 0.9375rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
+}
+
+.portfolio-summary-card__gain-percent {
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
 @media (max-width: 420px) {
