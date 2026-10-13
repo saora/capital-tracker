@@ -53,6 +53,61 @@
   font-weight: 600;
 }
 .movement-field--full { grid-column: 1 / -1; }
+.movement-date-field {
+  grid-column: 1 / -1;
+  width: min(100%, 16rem);
+}
+.movement-date-control {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 .65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.movement-date-control svg {
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.movement-field .movement-date-control input[name="date"] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: .45rem 0;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 450;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.movement-field .movement-date-control input[name="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+.movement-date-control:focus-within {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+.movement-field .movement-date-control input[name="date"]:focus-visible {
+  outline: none;
+}
 .movement-field input:not([type="radio"]),
 .movement-field select,
 .movement-field textarea {
@@ -168,8 +223,10 @@
 .movement-category-option { position: relative; display: block; min-width: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .movement-category-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .movement-category-option span {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
   min-height: 34px;
   padding: .35rem .6rem;
   border: 1px solid transparent;
@@ -179,6 +236,17 @@
   font-weight: 600;
   transition: color 160ms ease;
   user-select: none;
+}
+.movement-category-option span svg {
+  display: block;
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .movement-category-option input:checked + span { color: var(--color-brand-700); }
 .movement-category-option input:focus-visible + span { outline: 2px solid var(--color-brand-500); outline-offset: 1px; }

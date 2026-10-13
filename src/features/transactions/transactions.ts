@@ -142,9 +142,12 @@ export function renderTransactions(
           <span class="movement-sheet-badge">Google Sheets</span>
         </header>
         <form id="movement-form" class="movement-form">
-          <label class="movement-field movement-field--full" data-field-category="all">
+          <label class="movement-field movement-date-field" data-field-category="all">
             <span>Fecha del movimiento</span>
-            <input name="date" type="date" required value="${localDateInputValue()}" />
+            <span class="movement-date-control">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M16 3v4M8 3v4M3.5 10h17"/></svg>
+              <input name="date" type="date" required value="${localDateInputValue()}" aria-label="Fecha del movimiento" />
+            </span>
           </label>
 
           <fieldset class="movement-field movement-field--full movement-category-field">
@@ -152,11 +155,11 @@ export function renderTransactions(
             <div class="movement-category-toggle" role="radiogroup" aria-label="Dónde ocurrió">
               <label class="movement-category-option">
                 <input type="radio" name="category" value="Cuenta bancaria" checked />
-                <span>Banco</span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9h18M5 9v10m4-10v10m6-10v10m4-10v10M3 19h18M12 3 2.5 8h19L12 3Z" /></svg>Banco</span>
               </label>
               <label class="movement-category-option movement-category-option--stocks">
                 <input type="radio" name="category" value="Acciones" />
-                <span>Acciones</span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 20V4M3 20h18M7 15v-4h3v4H7Zm7 0V6h3v9h-3Z" /><path d="m6 8 4-3 4 2 5-4" /></svg>Acciones</span>
               </label>
             </div>
           </fieldset>

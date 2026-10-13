@@ -78,3 +78,33 @@
     max-width: 560px;
   }
 }
+
+
+.session-logout-dialog {
+  position: fixed;
+  inset: 0;
+  align-self: center;
+  justify-self: center;
+  width: min(26rem, calc(100% - 2rem));
+  max-width: none;
+  margin: auto;
+  padding: 0;
+  color: var(--color-text-primary, #17211b);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg, 0 18px 60px rgb(0 0 0 / 25%));
+}
+
+.session-logout-dialog::backdrop {
+  background: rgb(15 23 42 / 48%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.session-logout-dialog__content { padding: 1.35rem; }
+.session-logout-dialog h2 { margin: 0 0 .65rem; font-size: 1.1rem; }
+.session-logout-dialog p { margin: 0; color: var(--color-text-secondary); font-size: .9rem; line-height: 1.5; }
+.session-logout-dialog__actions { display: flex; justify-content: flex-end; gap: .65rem; margin-top: 1.25rem; }
+.session-logout-dialog__actions .button { min-height: 2.6rem; }
+.session-logout-dialog__actions .button--primary { color: var(--color-on-brand, #fff); background: var(--color-brand-700); border-color: var(--color-brand-700); }
