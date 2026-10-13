@@ -81,6 +81,20 @@ function appStateHasSession(): boolean {
   return Boolean(getSessionAccessToken());
 }
 
+function updateInvestmentFields(form: HTMLFormElement, category: string, concept: string): void {
+  const isInvestment = category === "Acciones";
+  form.querySelectorAll<HTMLElement>("[data-field-concept]").forEach((field) => {
+    const concepts = (field.dataset.fieldConcept ?? "").split(",");
+    const visible = isInvestment && concepts.includes(concept);
+    field.hidden = !visible;
+    field.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
+      input.disabled = !visible;
+      input.required = visible;
+      if (!visible) input.value = "";
+    });
+  });
+}
+
 export function initializeAppEvents(
   app: HTMLDivElement,
   handlers: AppEventHandlers,
@@ -282,40 +296,47 @@ export function initializeAppEvents(
 
     const form = target.closest<HTMLFormElement>("#movement-form");
     if (!form) return;
-
     const category = target.value;
-    const accountSelect = form.querySelector<HTMLSelectElement>("#movement-account");
-    const accountLabel = form.querySelector<HTMLElement>("#movement-account-label");
-    const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
-    const typeSelect = form.querySelector<HTMLSelectElement>('select[name="type"]');
 
-    accountSelect?.querySelectorAll<HTMLOptGroupElement>("optgroup[data-account-category]").forEach((group) => {
-      group.hidden = group.dataset.accountCategory !== category;
+    form.querySelectorAll<HTMLElement>("[data-field-category]").forEach((field) => {
+      const categories = field.dataset.fieldCategory ?? "all";
+      const visible = categories === "all" || categories === category;
+      field.hidden = !visible;
+      field.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea").forEach((input) => {
+        if (input.name === "date" || input.name === "amount" || input.name === "notes" || input.name === "concept") return;
+        input.disabled = !visible;
+        if (!visible) input.required = false;
+      });
     });
-    if (accountSelect) accountSelect.value = "";
-    if (accountLabel) accountLabel.textContent = category === "Acciones" ? "Acción o activo" : "Cuenta bancaria";
 
+    const bankSelect = form.querySelector<HTMLSelectElement>("#movement-account");
+    const assetSelect = form.querySelector<HTMLSelectElement>("#movement-asset");
+    if (bankSelect) {
+      bankSelect.disabled = category !== "Cuenta bancaria";
+      bankSelect.required = category === "Cuenta bancaria";
+      bankSelect.value = "";
+    }
+    if (assetSelect) {
+      assetSelect.disabled = category !== "Acciones";
+      assetSelect.required = category === "Acciones";
+      assetSelect.value = "";
+    }
+
+    const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
     conceptSelect?.querySelectorAll<HTMLOptionElement>("option[data-movement-category]").forEach((option) => {
       option.hidden = option.dataset.movementCategory !== category;
     });
-    if (conceptSelect) {
-      const defaultConcept = category === "Acciones" ? "Compra" : "Depósito";
-      conceptSelect.value = defaultConcept;
-    }
-    if (typeSelect) typeSelect.value = "Entrada";
+    if (conceptSelect) conceptSelect.value = category === "Acciones" ? "Compra" : "Depósito";
+    updateInvestmentFields(form, category, conceptSelect?.value ?? "");
   });
 
   app.addEventListener("change", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement) || target.name !== "concept") return;
-
     const form = target.closest<HTMLFormElement>("#movement-form");
-    const typeSelect = form?.querySelector<HTMLSelectElement>('select[name="type"]');
-    if (!typeSelect) return;
-
-    typeSelect.value = ["Depósito", "Compra", "Dividendo"].includes(target.value)
-      ? "Entrada"
-      : "Salida";
+    if (!form) return;
+    const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria";
+    updateInvestmentFields(form, category, target.value);
   });
 
   app.addEventListener("submit", (event: SubmitEvent) => {
@@ -331,15 +352,28 @@ export function initializeAppEvents(
     const formData = new FormData(target);
     const date = String(formData.get("date") ?? "").trim();
     const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones";
-    const type = String(formData.get("type") ?? "") as "Entrada" | "Salida";
-    const account = String(formData.get("account") ?? "").trim();
     const concept = String(formData.get("concept") ?? "").trim();
+    const account = String(formData.get(category === "Acciones" ? "account" : "account") ?? "").trim();
+    const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account");
+    const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset");
+    const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? "";
     const amount = Number(formData.get("amount"));
     const notes = String(formData.get("notes") ?? "").trim();
+    const quantityRaw = String(formData.get("quantity") ?? "").trim();
+    const averageCostRaw = String(formData.get("averageCost") ?? "").trim();
+    const quantity = quantityRaw ? Number(quantityRaw) : undefined;
+    const averageCost = averageCostRaw ? Number(averageCostRaw) : undefined;
+    const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept);
+    const isBuy = category === "Acciones" && concept === "Compra";
+    const type = category === "Cuenta bancaria"
+      ? (concept === "Depósito" ? "Entrada" : "Salida")
+      : (["Venta", "Dividendo"].includes(concept) ? "Entrada" : "Salida");
 
-    if (!token || !date || !account || !concept || !Number.isFinite(amount) || amount <= 0) {
+    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 ||
+      (isTrade && (quantity === undefined || !Number.isFinite(quantity) || quantity <= 0)) ||
+      (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0))) {
       if (status) {
-        status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y el importe.";
+        status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y los importes requeridos.";
         status.className = "movement-form__status movement-field--full is-error";
       }
       return;
@@ -357,17 +391,18 @@ export function initializeAppEvents(
         const savedMovement = {
           id: crypto.randomUUID(),
           date,
-          type,
-          account,
+          type: type as "Entrada" | "Salida",
+          account: selectedAccount,
           category,
           amount,
           concept,
           notes,
+          ...(isTrade && quantity !== undefined ? { quantity } : {}),
+          ...(isBuy && averageCost !== undefined ? { averageCost } : {}),
           currency: "MXN" as const,
         };
         await appendMovement(token, savedMovement);
-        appState.movements = [savedMovement, ...appState.movements]
-          .sort((a, b) => b.date.localeCompare(a.date));
+        appState.movements = [savedMovement, ...appState.movements].sort((a, b) => b.date.localeCompare(a.date));
         try {
           appState.movements = await getMovements(token);
         } catch {
@@ -383,9 +418,7 @@ export function initializeAppEvents(
         target.dataset.submitting = "false";
         if (submitButton) submitButton.disabled = false;
         if (status) {
-          status.textContent = error instanceof Error
-            ? error.message
-            : "No fue posible guardar el movimiento.";
+          status.textContent = error instanceof Error ? error.message : "No fue posible guardar el movimiento.";
           status.className = "movement-form__status movement-field--full is-error";
         }
       }
