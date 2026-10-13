@@ -88,6 +88,14 @@
 }
 .movement-field fieldset { border: 0; padding: 0; margin: 0; }
 .movement-field legend { margin-bottom: .5rem; }
+.movement-direction-field { border: 0; padding: 0; margin: 0; }
+.movement-direction-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.movement-direction-option { position: relative; display: block; min-width: 0; cursor: pointer; }
+.movement-direction-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.movement-direction-option span { display: grid; place-items: center; min-height: 44px; padding: .65rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); color: var(--color-text-secondary); font-size: .85rem; font-weight: 650; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.movement-direction-option--in input:checked + span { color: var(--color-success); border-color: var(--color-success); background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface)); }
+.movement-direction-option--out input:checked + span { color: var(--color-danger); border-color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)); }
+.movement-direction-option input:focus-visible + span { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
 .movement-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .6rem; }
 .movement-choice {
   display: flex; align-items: flex-start; gap: .55rem;
