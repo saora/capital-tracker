@@ -53,6 +53,56 @@
   font-weight: 600;
 }
 .movement-field--full { grid-column: 1 / -1; }
+.movement-date-field {
+  grid-column: auto;
+  width: min(100%, 13.5rem);
+}
+.movement-date-control {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 .65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.movement-date-control svg {
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.movement-date-control input[name="date"] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: .45rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: .8rem;
+}
+.movement-date-control input[name="date"]::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.movement-date-control:focus-within {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+.movement-date-control input[name="date"]:focus-visible {
+  outline: none;
+}
 .movement-field input:not([type="radio"]),
 .movement-field select,
 .movement-field textarea {
