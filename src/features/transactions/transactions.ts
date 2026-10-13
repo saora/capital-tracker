@@ -207,7 +207,10 @@ export function renderTransactions(
 
           <label class="movement-field movement-field--full" data-field-category="all">
             <span>Notas (opcional)</span>
-            <textarea name="notes" rows="2" maxlength="500" placeholder="Detalles, referencia o motivo del movimiento"></textarea>
+            <span class="movement-notes-control">
+              <textarea name="notes" rows="2" maxlength="30" placeholder="Detalles, referencia o motivo del movimiento"></textarea>
+              <span class="movement-notes-counter" data-notes-counter aria-live="polite">00/30</span>
+            </span>
           </label>
 
           <p class="movement-form__hint movement-field--full">El registro se guarda en la pestaña Movimientos y no modifica automáticamente los saldos ni las posiciones.</p>
