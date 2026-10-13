@@ -11,6 +11,7 @@ export interface InvestmentSheetsData {
   investments: Investment[];
   summary: PortfolioSummary;
   historyPoints: ChartPoint[];
+  gainSummaryText?: string;
 }
 
 type SheetRow = Array<string | number | boolean | null>;
@@ -198,10 +199,11 @@ export async function getInvestmentSheetsData(
 ): Promise<InvestmentSheetsData> {
   const token = accessToken ?? (await signInWithGoogle());
 
-  const [investmentRows, variableRows, portfolioControlRows] = await Promise.all([
+  const [investmentRows, variableRows, portfolioControlRows, gainSummaryRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
     readRange(token, "'Renta variable'!A11:M"),
     readRange(token, "'Portfolio'!A2:C"),
+    readRange(token, "'Renta variable'!A9"),
   ]);
 
   const fixedIncome = parseFixedIncome(investmentRows);
@@ -336,5 +338,6 @@ export async function getInvestmentSheetsData(
     investments: parsedInvestments.map((item) => item.investment),
     summary,
     historyPoints,
+    gainSummaryText: String(gainSummaryRows[0]?.[0] ?? "").trim() || undefined,
   };
 }
