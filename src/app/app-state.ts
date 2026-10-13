@@ -1,9 +1,10 @@
 import type { AppRoute } from '../types/navigation';
 import type { PerformancePeriod } from '../types/portfolio';
 import type { InvestmentSheetsData } from '../services/google-sheets.service';
-import type { Movement } from '../services/movements.service';
+import type { Movement, CatalogAsset } from '../services/movements.service';
 
 export type HoldingsCategory = 'stocks' | 'bank-accounts';
+export type MovementPeriod = '1D' | '1S' | '1M' | '1A';
 
 export interface AppState {
   activeRoute: AppRoute;
@@ -11,6 +12,8 @@ export interface AppState {
   activeHoldingsCategory: HoldingsCategory;
   investmentData: InvestmentSheetsData | null;
   movements: Movement[];
+  catalog: CatalogAsset[];
+  movementPeriod: MovementPeriod;
   isConnecting: boolean;
   isAuthLoading: boolean;
   connectionError: string;
@@ -25,6 +28,8 @@ export const appState: AppState = {
   activeHoldingsCategory: 'stocks',
   investmentData: null,
   movements: [],
+  catalog: [],
+  movementPeriod: '1M',
   isConnecting: false,
   isAuthLoading: false,
   connectionError: '',
