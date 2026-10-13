@@ -189,6 +189,17 @@ export function initializeAppEvents(
       return;
     }
 
+    const movementFormToggle = target.closest<HTMLButtonElement>("[data-movement-form-toggle]");
+    if (movementFormToggle) {
+      const formCard = app.querySelector<HTMLElement>("#movement-form-card");
+      if (formCard) {
+        formCard.hidden = false;
+        movementFormToggle.hidden = true;
+        formCard.querySelector<HTMLInputElement>('input[name="date"]')?.focus();
+      }
+      return;
+    }
+
     const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
     if (movementPeriodElement) {
       const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined;
