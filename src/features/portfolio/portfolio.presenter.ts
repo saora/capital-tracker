@@ -36,6 +36,20 @@ function formatCurrencyAmount(value: number, currency: "MXN" | "USD"): string {
   return formatCurrency(Math.abs(value), currency);
 }
 
+function parseGainSummaryValue(value?: string): number | undefined {
+  if (!value?.trim()) return undefined;
+
+  const text = value.trim();
+  const isParenthesizedNegative = /^\(.*\)$/.test(text);
+  const normalized = text
+    .replace(/[()$€£,\s]/g, "")
+    .replace(/[^\d.+-]/g, "");
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed)) return undefined;
+  return isParenthesizedNegative ? -Math.abs(parsed) : parsed;
+}
+
 export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
@@ -93,22 +107,22 @@ export function presentPortfolio(
     });
 
   positions.sort((a, b) => {
-    const getLocationPriority = (location: string): number => {
+    const getLocationOrder = (location: string): number => {
       const normalized = location.trim().toLocaleLowerCase("es-MX");
       if (normalized === "gbm") return 0;
       if (normalized === "bitso") return 1;
       return 2;
     };
 
-    const locationPriority = getLocationPriority(a.location) - getLocationPriority(b.location);
-    if (locationPriority !== 0) return locationPriority;
+    const priorityOrder = getLocationOrder(a.location) - getLocationOrder(b.location);
+    if (priorityOrder !== 0) return priorityOrder;
 
-    if (getLocationPriority(a.location) === 2) {
+    if (getLocationOrder(a.location) === 2) {
       const locationOrder = a.location.localeCompare(b.location, "es-MX");
       if (locationOrder !== 0) return locationOrder;
     }
 
-    return b.currentValue - a.currentValue;
+    return b.gainPercent - a.gainPercent;
   });
 
   // The current Google Sheets service normalizes all position values to MXN.
@@ -117,9 +131,15 @@ export function presentPortfolio(
   const investedValue = positions.reduce((total, position) => total + position.investedValue, 0);
   const totalGain = totalValue - investedValue;
   const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
-  const sheetGainMatch = gainSummaryText?.match(/([+-]?\d+(?:[.,]\d+)?%)\s*\(?\s*(-?\$[\d,]+(?:\.\d{2})?)\s*\)?/);
-  const totalPerformanceLabel = sheetGainMatch?.[1] ?? formatPercent(totalPerformance);
-  const totalGainAmountLabel = sheetGainMatch?.[2] ?? formatCurrencyAmount(totalGain, currency);
+  const sheetGainValue = parseGainSummaryValue(gainSummaryText);
+  const totalPerformanceLabel =
+    sheetGainValue !== undefined && investedValue > 0
+      ? formatPercent((sheetGainValue / investedValue) * 100)
+      : formatPercent(totalPerformance);
+  const totalGainAmountLabel =
+    sheetGainValue !== undefined
+      ? formatCurrency(sheetGainValue, currency)
+      : formatCurrencyAmount(totalGain, currency);
 
   return {
     positions,
@@ -127,13 +147,7 @@ export function presentPortfolio(
     totalValueLabel: formatCurrency(totalValue, currency),
     totalGainAmountLabel,
     totalPerformanceLabel,
-    totalGainClass: sheetGainMatch
-      ? (sheetGainMatch[1].startsWith("-") || sheetGainMatch[2].startsWith("-$")
-        ? "text-negative"
-        : "text-positive")
-      : totalGain >= 0
-        ? "text-positive"
-        : "text-negative",
+    totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,
     disclaimer: connected
       ? "Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja."

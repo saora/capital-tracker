@@ -87,6 +87,8 @@ function renderMovement(movement: Movement): string {
     `<div><span>Categoría</span><strong>${movement.category === 'Acciones' ? 'Acciones y ETF' : 'Cuenta bancaria'}</strong></div>`,
     `<div><span>Concepto</span><strong>${escapeHtml(movement.concept || '—')}</strong></div>`,
     `<div><span>Importe</span><strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong></div>`,
+    ...(movement.commission !== undefined ? [`<div><span>Comisión</span><strong>${escapeHtml(formatCurrency(movement.commission, movement.currency))}</strong></div>`] : []),
+    ...(movement.commission !== undefined && ['Compra', 'Venta'].includes(movement.concept) ? [`<div><span>Total</span><strong>${escapeHtml(formatCurrency(movement.amount + movement.commission, movement.currency))}</strong></div>`] : []),
     ...(movement.quantity !== undefined ? [`<div><span>Número de títulos</span><strong>${escapeHtml(String(movement.quantity))}</strong></div>`] : []),
     ...(movement.averageCost !== undefined ? [`<div><span>Costo promedio</span><strong>${escapeHtml(formatCurrency(movement.averageCost, movement.currency))}</strong></div>`] : []),
     ...(movement.notes ? [`<div class="movement-row__note"><span>Notas</span><strong>${escapeHtml(movement.notes)}</strong></div>`] : []),
@@ -209,7 +211,7 @@ export function renderTransactions(
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
             <span>Número de títulos</span>
-            <input name="quantity" type="number" min="1" step="1" inputmode="numeric" placeholder="0" disabled />
+            <input name="quantity" type="number" min="1" max="99999" step="1" inputmode="numeric" placeholder="0" disabled />
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
@@ -218,9 +220,21 @@ export function renderTransactions(
           </label>
 
           <label class="movement-field" data-field-category="all">
-            <span>Importe (MXN)</span>
+            <span>Importe</span>
             <input name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input required />
           </label>
+
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
+            <span>Comisión</span>
+            <input name="commission" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input disabled />
+          </label>
+
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
+            <span>Total</span>
+            <input name="total" type="text" placeholder="$0.00" readonly aria-readonly="true" data-trade-total disabled />
+          </label>
+
+          <input name="currency" type="hidden" value="MXN" />
 
           <label class="movement-field movement-field--full" data-field-category="all">
             <span>Notas (opcional)</span>

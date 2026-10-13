@@ -41,6 +41,36 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
+function parseGainSummaryAmount(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const text = String(value ?? "").trim();
+  if (!text) {
+    throw new Error(
+      'La celda "Renta variable"!A9 está vacía. Ingresa el monto de la ganancia total.',
+    );
+  }
+
+  // A9 contains only the gain amount. Google Sheets may return either a
+  // numeric value or a formatted currency string, so no percentage is expected.
+  const isParenthesizedNegative = /^\(.*\)$/.test(text);
+  const normalized = text
+    .replace(/[()$€£,\s]/g, "")
+    .replace(/[^\d.+-]/g, "");
+  const parsed = Number(normalized);
+  const amount = isParenthesizedNegative ? -Math.abs(parsed) : parsed;
+
+  if (!Number.isFinite(amount)) {
+    throw new Error(
+      'No se pudo interpretar el monto de ganancia total desde "Renta variable"!A9.',
+    );
+  }
+
+  return amount;
+}
+
 function normalize(value: unknown): string {
   return String(value ?? "")
     .trim()
@@ -266,10 +296,14 @@ export async function getInvestmentSheetsData(
     ? (dailyChangeAmount / totalValue) * 100
     : 0;
 
+  const gainSummaryText = String(gainSummaryRows[0]?.[0] ?? "").trim();
+  const totalGain = parseGainSummaryAmount(gainSummaryText);
+
   const summary: PortfolioSummary = {
     invested,
     totalValue,
-    totalGain: totalValue - invested,
+    // Use the spreadsheet's gain summary so realized gains from sales are included.
+    totalGain,
     dailyChange,
     currency: "MXN",
   };
@@ -286,7 +320,7 @@ export async function getInvestmentSheetsData(
   console.log("RESUMEN CALCULADO", {
     capitalInvertido: invested,
     patrimonioTotal: totalValue,
-    gananciaTotal: totalValue - invested,
+    gananciaTotal: summary.totalGain,
     cantidadPosiciones: parsedInvestments.length,
   });
 
@@ -312,6 +346,6 @@ export async function getInvestmentSheetsData(
     investments: parsedInvestments.map((item) => item.investment),
     summary,
     historyPoints,
-    gainSummaryText: String(gainSummaryRows[0]?.[0] ?? "").trim() || undefined,
+    gainSummaryText: gainSummaryText || undefined,
   };
 }
