@@ -189,6 +189,16 @@ export function initializeAppEvents(
       return;
     }
 
+    const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
+    if (movementPeriodElement) {
+      const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined;
+      if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) {
+        appState.movementPeriod = period;
+        renderPage(app);
+      }
+      return;
+    }
+
     const routeElement = target.closest<HTMLElement>("[data-route]");
 
     if (routeElement) {
