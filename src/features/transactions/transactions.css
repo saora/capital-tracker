@@ -141,3 +141,50 @@
 .movement-confirm-dialog__actions { display:flex; justify-content:flex-end; gap:.65rem; margin-top:1.25rem; }
 .movement-confirm-dialog__actions .button { min-height:2.6rem; }
 .movement-confirm-dialog__actions [data-movement-delete-confirm] { color:#fff; background:var(--color-danger); border-color:var(--color-danger); }
+
+
+/* The form takes focus while the history is hidden. */
+#movement-history-section[hidden] { display: none; }
+.movement-confirm-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  align-self: center;
+  justify-self: center;
+}
+.movement-confirm-dialog__actions [data-movement-action-confirm].button--primary {
+  color: var(--color-on-brand, #fff);
+  background: var(--color-brand-700);
+  border-color: var(--color-brand-700);
+}
+.movement-success-toast {
+  position: fixed;
+  z-index: 1000;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  padding: .85rem 1.1rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 35px rgb(0 0 0 / 18%);
+  transform: translateX(-50%);
+  font-size: .875rem;
+  font-weight: 600;
+}
+.movement-success-toast[hidden] { display: none; }
+.movement-success-toast svg {
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  fill: none;
+  stroke: var(--color-success, #16a34a);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
