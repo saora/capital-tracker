@@ -15,6 +15,7 @@ import type { HoldingsCategory } from "./app-state";
 
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
+import { appendMovement, getMovements } from "../services/movements.service";
 import { closeAccountMenu } from "./session-menu";
 
 interface AppEventHandlers {
@@ -252,6 +253,114 @@ export function initializeAppEvents(
       selectChartPoint(nextPoint);
       nextPoint.focus();
     }
+  });
+
+  app.addEventListener("change", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.name !== "category") return;
+
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    if (!form) return;
+
+    const category = target.value;
+    const accountSelect = form.querySelector<HTMLSelectElement>("#movement-account");
+    const accountLabel = form.querySelector<HTMLElement>("#movement-account-label");
+    const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+    const typeSelect = form.querySelector<HTMLSelectElement>('select[name="type"]');
+
+    accountSelect?.querySelectorAll<HTMLOptGroupElement>("optgroup[data-account-category]").forEach((group) => {
+      group.hidden = group.dataset.accountCategory !== category;
+    });
+    if (accountSelect) accountSelect.value = "";
+    if (accountLabel) accountLabel.textContent = category === "Acciones" ? "Acción o activo" : "Cuenta bancaria";
+
+    conceptSelect?.querySelectorAll<HTMLOptionElement>("option[data-movement-category]").forEach((option) => {
+      option.hidden = option.dataset.movementCategory !== category;
+    });
+    if (conceptSelect) {
+      const defaultConcept = category === "Acciones" ? "Compra" : "Depósito";
+      conceptSelect.value = defaultConcept;
+    }
+    if (typeSelect) typeSelect.value = "Entrada";
+  });
+
+  app.addEventListener("change", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement) || target.name !== "concept") return;
+
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    const typeSelect = form?.querySelector<HTMLSelectElement>('select[name="type"]');
+    if (!typeSelect) return;
+
+    typeSelect.value = ["Depósito", "Compra", "Dividendo"].includes(target.value)
+      ? "Entrada"
+      : "Salida";
+  });
+
+  app.addEventListener("submit", (event: SubmitEvent) => {
+    const target = event.target;
+    if (!(target instanceof HTMLFormElement) || target.id !== "movement-form") return;
+
+    event.preventDefault();
+    if (target.dataset.submitting === "true") return;
+
+    const token = getSessionAccessToken();
+    const status = target.querySelector<HTMLElement>("#movement-form-status");
+    const submitButton = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const formData = new FormData(target);
+    const date = String(formData.get("date") ?? "").trim();
+    const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones";
+    const type = String(formData.get("type") ?? "") as "Entrada" | "Salida";
+    const account = String(formData.get("account") ?? "").trim();
+    const concept = String(formData.get("concept") ?? "").trim();
+    const amount = Number(formData.get("amount"));
+    const notes = String(formData.get("notes") ?? "").trim();
+
+    if (!token || !date || !account || !concept || !Number.isFinite(amount) || amount <= 0) {
+      if (status) {
+        status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y el importe.";
+        status.className = "movement-form__status movement-field--full is-error";
+      }
+      return;
+    }
+
+    target.dataset.submitting = "true";
+    if (submitButton) submitButton.disabled = true;
+    if (status) {
+      status.textContent = "Guardando en Google Sheets…";
+      status.className = "movement-form__status movement-field--full";
+    }
+
+    void (async () => {
+      try {
+        await appendMovement(token, {
+          id: crypto.randomUUID(),
+          date,
+          type,
+          account,
+          category,
+          amount,
+          concept,
+          notes,
+        });
+        appState.movements = await getMovements(token);
+        renderPage(app);
+        const successStatus = app.querySelector<HTMLElement>("#movement-form-status");
+        if (successStatus) {
+          successStatus.textContent = "Movimiento guardado correctamente.";
+          successStatus.className = "movement-form__status movement-field--full is-success";
+        }
+      } catch (error) {
+        target.dataset.submitting = "false";
+        if (submitButton) submitButton.disabled = false;
+        if (status) {
+          status.textContent = error instanceof Error
+            ? error.message
+            : "No fue posible guardar el movimiento.";
+          status.className = "movement-form__status movement-field--full is-error";
+        }
+      }
+    })();
   });
 
   initializePullToRefresh(app);
