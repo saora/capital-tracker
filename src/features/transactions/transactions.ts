@@ -155,11 +155,11 @@ export function renderTransactions(
             <div class="movement-category-toggle" role="radiogroup" aria-label="Dónde ocurrió">
               <label class="movement-category-option">
                 <input type="radio" name="category" value="Cuenta bancaria" checked />
-                <span>Banco</span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9h18M5 9v10m4-10v10m6-10v10m4-10v10M3 19h18M12 3 2.5 8h19L12 3Z" /></svg>Banco</span>
               </label>
               <label class="movement-category-option movement-category-option--stocks">
                 <input type="radio" name="category" value="Acciones" />
-                <span>Acciones</span>
+                <span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 20V4M3 20h18M7 15v-4h3v4H7Zm7 0V6h3v9h-3Z" /><path d="m6 8 4-3 4 2 5-4" /></svg>Acciones</span>
               </label>
             </div>
           </fieldset>
