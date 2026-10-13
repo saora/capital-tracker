@@ -89,6 +89,8 @@ function renderMovement(movement: Movement): string {
         <div class="movement-row__details">
           <strong>${escapeHtml(movement.account)} · ${escapeHtml(movement.concept || movement.type)}</strong>
           <span>${escapeHtml(formatDate(movement.date))} · ${escapeHtml(categoryLabel)} · ${escapeHtml(movement.type)}</span>
+          ${movement.quantity !== undefined ? `<small>Títulos: ${escapeHtml(String(movement.quantity))}</small>` : ''}
+          ${movement.averageCost !== undefined ? `<small>Costo promedio: ${escapeHtml(formatCurrency(movement.averageCost, movement.currency))} por título</small>` : ''}
           ${movement.notes ? `<small>${escapeHtml(movement.notes)}</small>` : ''}
         </div>
       </div>
