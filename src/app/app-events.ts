@@ -262,12 +262,34 @@ export function initializeAppEvents(
       return;
     }
 
+    const closeSuccessToast = target.closest<HTMLButtonElement>("[data-movement-success-close]");
+    if (closeSuccessToast) {
+      const toast = closeSuccessToast.closest<HTMLElement>("#movement-success-toast");
+      if (toast) {
+        const timer = Number(toast.dataset.hideTimer);
+        if (timer) window.clearTimeout(timer);
+        delete toast.dataset.hideTimer;
+        toast.hidden = true;
+      }
+      return;
+    }
+
     const expandMovement = target.closest<HTMLButtonElement>("[data-movement-expand]");
     if (expandMovement) {
       const row = expandMovement.closest<HTMLElement>("[data-movement-row]");
       const detail = row?.querySelector<HTMLElement>("[data-movement-detail]");
       if (row && detail) {
         const opening = detail.hidden === true;
+        if (opening) {
+          app.querySelectorAll<HTMLElement>("[data-movement-row]").forEach((otherRow) => {
+            if (otherRow === row) return;
+            const otherDetail = otherRow.querySelector<HTMLElement>("[data-movement-detail]");
+            const otherButton = otherRow.querySelector<HTMLButtonElement>("[data-movement-expand]");
+            if (otherDetail) otherDetail.hidden = true;
+            otherRow.classList.remove("is-expanded");
+            otherButton?.setAttribute("aria-expanded", "false");
+          });
+        }
         detail.hidden = !opening;
         row.classList.toggle("is-expanded", opening);
         expandMovement.setAttribute("aria-expanded", String(opening));
@@ -660,7 +682,7 @@ function showMovementSuccess(app: HTMLDivElement, message: string): void {
   toast.dataset.hideTimer = String(window.setTimeout(() => {
     toast.hidden = true;
     delete toast.dataset.hideTimer;
-  }, 3500));
+  }, 5000));
 }
 
 function initializePullToRefresh(app: HTMLDivElement): void {
