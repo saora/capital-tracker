@@ -209,6 +209,8 @@ export function initializeAppEvents(
       if (formCard) {
         formCard.hidden = false;
         movementFormToggle.hidden = true;
+        const history = app.querySelector<HTMLElement>("#movement-history-section");
+        if (history) history.hidden = true;
         formCard.querySelector<HTMLInputElement>('input[name="date"]')?.focus();
       }
       return;
@@ -276,6 +278,8 @@ export function initializeAppEvents(
       const status = form.querySelector<HTMLElement>("#movement-form-status");
       if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
       card.hidden = false; if (add) add.hidden = true;
+      const history = app.querySelector<HTMLElement>("#movement-history-section");
+      if (history) history.hidden = true;
       card.scrollIntoView({ behavior: "smooth", block: "start" });
       dateInput?.focus({ preventScroll: true });
       return;
@@ -284,32 +288,55 @@ export function initializeAppEvents(
     const deleteButton = target.closest<HTMLButtonElement>("[data-movement-delete]");
     if (deleteButton) {
       const id = deleteButton.dataset.movementDelete;
-      const dialog = app.querySelector<HTMLDialogElement>("#movement-delete-dialog");
-      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-delete-confirm]");
+      const dialog = app.querySelector<HTMLDialogElement>("#movement-action-dialog");
+      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-action-confirm]");
       if (!id || !dialog || !confirmButton) return;
-      dialog.dataset.movementId = id; confirmButton.disabled = false;
+      dialog.dataset.action = "delete";
+      dialog.dataset.movementId = id;
+      app.querySelector<HTMLElement>("#movement-action-title")!.textContent = "Eliminar movimiento";
+      app.querySelector<HTMLElement>("#movement-action-message")!.textContent = "¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.";
+      confirmButton.textContent = "Eliminar";
+      confirmButton.classList.remove("button--primary");
+      confirmButton.classList.add("button--danger");
+      confirmButton.disabled = false;
       if (!dialog.open) dialog.showModal();
       return;
     }
 
-    const cancelDelete = target.closest<HTMLButtonElement>("[data-movement-delete-cancel]");
-    if (cancelDelete) { app.querySelector<HTMLDialogElement>("#movement-delete-dialog")?.close(); return; }
+    const cancelAction = target.closest<HTMLButtonElement>("[data-movement-action-cancel]");
+    if (cancelAction) {
+      app.querySelector<HTMLDialogElement>("#movement-action-dialog")?.close();
+      return;
+    }
 
-    const confirmDelete = target.closest<HTMLButtonElement>("[data-movement-delete-confirm]");
-    if (confirmDelete) {
-      const dialog = confirmDelete.closest<HTMLDialogElement>("#movement-delete-dialog");
-      const id = dialog?.dataset.movementId;
+    const confirmAction = target.closest<HTMLButtonElement>("[data-movement-action-confirm]");
+    if (confirmAction) {
+      const dialog = confirmAction.closest<HTMLDialogElement>("#movement-action-dialog");
+      if (!dialog) return;
+      const action = dialog.dataset.action;
+      if (action === "save") {
+        dialog.close();
+        const form = app.querySelector<HTMLFormElement>("#movement-form");
+        if (form) {
+          form.dataset.confirmedSave = "true";
+          form.requestSubmit();
+        }
+        return;
+      }
+      const id = dialog.dataset.movementId;
       const token = getSessionAccessToken();
-      if (!id || !dialog) return;
-      confirmDelete.disabled = true;
+      if (action !== "delete" || !id) return;
+      confirmAction.disabled = true;
       void (async () => {
         try {
           if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión.");
           await deleteMovement(token, id);
           appState.movements = appState.movements.filter((item) => item.id !== id);
-          dialog.close(); renderPage(app);
+          dialog.close();
+          renderPage(app);
+          showMovementSuccess(app, "Movimiento eliminado correctamente.");
         } catch (error) {
-          confirmDelete.disabled = false;
+          confirmAction.disabled = false;
           window.alert(error instanceof Error ? error.message : "No fue posible eliminar el movimiento.");
         }
       })();
@@ -448,6 +475,24 @@ export function initializeAppEvents(
     event.preventDefault();
     if (target.dataset.submitting === "true") return;
 
+    if (target.dataset.confirmedSave !== "true") {
+      if (!target.reportValidity()) return;
+      const dialog = app.querySelector<HTMLDialogElement>("#movement-action-dialog");
+      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-action-confirm]");
+      if (!dialog || !confirmButton) return;
+      dialog.dataset.action = "save";
+      delete dialog.dataset.movementId;
+      app.querySelector<HTMLElement>("#movement-action-title")!.textContent = "Confirmar registro";
+      app.querySelector<HTMLElement>("#movement-action-message")!.textContent = "¿Deseas guardar este movimiento?";
+      confirmButton.textContent = "Aceptar";
+      confirmButton.classList.remove("button--danger");
+      confirmButton.classList.add("button--primary");
+      confirmButton.disabled = false;
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    delete target.dataset.confirmedSave;
+
     const token = getSessionAccessToken();
     const status = target.querySelector<HTMLElement>("#movement-form-status");
     const submitButton = target.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -510,11 +555,7 @@ export function initializeAppEvents(
           // El append ya fue confirmado; conserva el registro local en pantalla.
         }
         renderPage(app);
-        const successStatus = app.querySelector<HTMLElement>("#movement-form-status");
-        if (successStatus) {
-          successStatus.textContent = editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.";
-          successStatus.className = "movement-form__status movement-field--full is-success";
-        }
+        showMovementSuccess(app, editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.");
       } catch (error) {
         target.dataset.submitting = "false";
         if (submitButton) submitButton.disabled = false;
@@ -527,6 +568,20 @@ export function initializeAppEvents(
   });
 
   initializePullToRefresh(app);
+}
+
+function showMovementSuccess(app: HTMLDivElement, message: string): void {
+  const toast = app.querySelector<HTMLElement>("#movement-success-toast");
+  const messageElement = app.querySelector<HTMLElement>("#movement-success-message");
+  if (!toast || !messageElement) return;
+  const previousTimer = Number(toast.dataset.hideTimer);
+  if (previousTimer) window.clearTimeout(previousTimer);
+  messageElement.textContent = message;
+  toast.hidden = false;
+  toast.dataset.hideTimer = String(window.setTimeout(() => {
+    toast.hidden = true;
+    delete toast.dataset.hideTimer;
+  }, 3500));
 }
 
 function initializePullToRefresh(app: HTMLDivElement): void {
