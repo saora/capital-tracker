@@ -214,7 +214,7 @@ export function renderTransactions(
           </label>
 
           <p class="movement-form__hint movement-field--full">El registro se guarda en la pestaña Movimientos y no modifica automáticamente los saldos ni las posiciones.</p>
-          <div class="movement-form__actions movement-field--full"><button class="button button--primary movement-submit" type="submit">Guardar movimiento</button><button class="button movement-cancel" type="button" data-movement-cancel hidden>Cancelar</button></div>
+          <div class="movement-form__actions movement-field--full"><button class="button button--primary movement-submit" type="submit" disabled>Guardar movimiento</button><button class="button movement-cancel" type="button" data-movement-cancel hidden>Cancelar</button></div>
           <p id="movement-form-status" class="movement-form__status movement-field--full" role="status" aria-live="polite"></p>
         </form>
       </section>
