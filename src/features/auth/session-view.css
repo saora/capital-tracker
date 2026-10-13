@@ -1,0 +1,80 @@
+.session-page {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.session-page__card {
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+}
+
+.session-page__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-page__identity > svg {
+  display: block;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--color-brand-50, #ecfdf5);
+  color: var(--color-brand-700, #20684c);
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-page__identity h2 {
+  margin: 0;
+  color: var(--color-text, #17211b);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.session-page__identity p {
+  margin: 5px 0 0;
+  color: var(--color-text-secondary, #68776e);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.session-page__logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  background: #fff;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.session-page__logout:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.session-page__logout svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (min-width: 768px) {
+  .session-page__card {
+    max-width: 560px;
+  }
+}
