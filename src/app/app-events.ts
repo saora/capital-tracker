@@ -272,7 +272,7 @@ export function initializeAppEvents(
       const needsAverage = movement.category === "Acciones" && movement.concept === "Compra";
       if (quantity) { quantity.value = movement.quantity === undefined ? "" : String(movement.quantity); quantity.disabled = !needsQuantity; quantity.required = needsQuantity; quantity.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsQuantity; }
       if (average) { average.value = movement.averageCost === undefined ? "" : String(movement.averageCost); average.disabled = !needsAverage; average.required = needsAverage; average.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsAverage; }
-      form.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento";
+      card.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento";
       form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios";
       form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
       const status = form.querySelector<HTMLElement>("#movement-form-status");
