@@ -147,16 +147,16 @@ export function renderTransactions(
             <input name="date" type="date" required value="${localDateInputValue()}" />
           </label>
 
-          <fieldset class="movement-field movement-field--full">
+          <fieldset class="movement-field movement-field--full movement-category-field">
             <legend>¿Dónde ocurrió?</legend>
-            <div class="movement-choice-grid">
-              <label class="movement-choice">
+            <div class="movement-category-toggle" role="radiogroup" aria-label="Dónde ocurrió">
+              <label class="movement-category-option">
                 <input type="radio" name="category" value="Cuenta bancaria" checked />
-                <span><strong>Cuentas bancarias</strong><small>Depósitos y retiros</small></span>
+                <span>Banco</span>
               </label>
-              <label class="movement-choice">
+              <label class="movement-category-option movement-category-option--stocks">
                 <input type="radio" name="category" value="Acciones" />
-                <span><strong>Acciones y ETF</strong><small>Compras, ventas y dividendos</small></span>
+                <span>Acciones</span>
               </label>
             </div>
           </fieldset>

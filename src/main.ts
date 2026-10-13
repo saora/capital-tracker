@@ -6,6 +6,7 @@ import './styles/layout.css';
 import './styles/components.css';
 
 import './features/auth/session-header.css';
+import './features/auth/session-view.css';
 import './components/skeleton-loader/skeleton-loader.css';
 import './features/auth/auth.css';
 import './features/dashboard/dashboard.css';

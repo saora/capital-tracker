@@ -53,6 +53,7 @@ export const validRoutes: AppRoute[] = [
   'portfolio',
   'transactions',
   'watchlist',
+  'session',
 ];
 
 export const validHoldingsCategories: HoldingsCategory[] = [

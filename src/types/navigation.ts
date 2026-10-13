@@ -3,7 +3,8 @@ export type AppRoute =
   | 'dashboard'
   | 'portfolio'
   | 'transactions'
-  | 'watchlist';
+  | 'watchlist'
+  | 'session';
 
 export interface NavigationItem {
   route: AppRoute;
