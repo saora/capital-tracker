@@ -126,6 +126,8 @@
   .movement-form { grid-template-columns: minmax(0,1fr); }
   .movement-field--full { grid-column: auto; }
   .movement-choice-grid { grid-template-columns: minmax(0,1fr); }
-  .movement-row { gap: .5rem; }
-  .movement-row__amount { font-size: .78rem; }
+  .movement-row__summary { gap: .45rem; }
+  .movement-row__amount { font-size: .75rem; }
+  .movement-row__expanded { padding-left: 2.3rem; }
+  .movement-row__facts { grid-template-columns: minmax(0,1fr); }
 }
