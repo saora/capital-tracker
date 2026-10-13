@@ -42,21 +42,30 @@ function toNumber(value: unknown): number {
 }
 
 function parseGainSummaryAmount(value: unknown): number {
-  const text = String(value ?? "").trim();
-  const match = text.match(/([+-]?\d+(?:[.,]\d+)?%)\s*\(?\s*(-?\$[\d,]+(?:\.\d{2})?)\s*\)?/);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
 
-  if (!match) {
+  const text = String(value ?? "").trim();
+  if (!text) {
     throw new Error(
-      'No se pudo interpretar la ganancia total desde "Renta variable"!A9. ' +
-      "Verifica que la celda contenga el porcentaje y el importe de la ganancia.",
+      'La celda "Renta variable"!A9 está vacía. Ingresa el monto de la ganancia total.',
     );
   }
 
-  const amountText = match[2].replace(/[$,\s]/g, "");
-  const amount = Number(amountText);
+  // A9 contains only the gain amount. Google Sheets may return either a
+  // numeric value or a formatted currency string, so no percentage is expected.
+  const isParenthesizedNegative = /^\(.*\)$/.test(text);
+  const normalized = text
+    .replace(/[()$€£,\s]/g, "")
+    .replace(/[^\d.+-]/g, "");
+  const parsed = Number(normalized);
+  const amount = isParenthesizedNegative ? -Math.abs(parsed) : parsed;
 
   if (!Number.isFinite(amount)) {
-    throw new Error('El importe de ganancia en "Renta variable"!A9 no es válido.');
+    throw new Error(
+      'No se pudo interpretar el monto de ganancia total desde "Renta variable"!A9.',
+    );
   }
 
   return amount;
