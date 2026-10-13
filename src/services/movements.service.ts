@@ -201,7 +201,7 @@ export async function updateMovement(token: string, movement: Omit<Movement, "cu
         movement.account,
         movement.concept,
         "",
-        movement.currency ?? "MXN",
+        "MXN",
         movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "",
         movement.quantity ?? "",
         movement.averageCost ?? "",
