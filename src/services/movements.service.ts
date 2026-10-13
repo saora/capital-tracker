@@ -53,6 +53,7 @@ export interface Movement {
   notes: string;
   quantity?: number;
   averageCost?: number;
+  commission?: number;
   currency: Currency;
 }
 
@@ -133,6 +134,7 @@ export async function getMovements(token: string): Promise<Movement[]> {
         ? "Acciones"
         : "Cuenta bancaria",
       amount: parseAmount(row[11]),
+      commission: row[12] === undefined || row[12] === "" ? undefined : parseAmount(row[12]),
       concept,
       notes: String(row[13] ?? "").trim(),
       quantity: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
@@ -145,7 +147,7 @@ export async function getMovements(token: string): Promise<Movement[]> {
 
 export async function appendMovement(
   token: string,
-  movement: Omit<Movement, "currency">,
+  movement: Omit<Movement, "currency"> & { currency?: Currency },
 ): Promise<void> {
   const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`) + ":append");
   url.searchParams.set("valueInputOption", "USER_ENTERED");
@@ -163,12 +165,12 @@ export async function appendMovement(
         movement.account,                    // E: Cuenta o Activo
         movement.concept,                    // F: Concepto
         "",                                   // G: Cantidad (not collected separately by the form)
-        "MXN",                               // H: Moneda
+        movement.currency ?? "MXN",           // H: Moneda
         movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "", // I: Precio unitario
         movement.quantity ?? "",             // J: Titulos
         movement.averageCost ?? "",          // K: Costo promedio
         movement.amount,                     // L: Importe
-        "",                                   // M: Comision (not collected by the form)
+        movement.commission ?? "",           // M: Comision
         movement.notes,                      // N: Notas
       ]],
     }),
@@ -185,7 +187,7 @@ async function findMovementRow(token: string, id: string): Promise<number> {
   if (index < 1) throw new Error("No se encontró el movimiento en Google Sheets.");
   return index + 1;
 }
-export async function updateMovement(token: string, movement: Omit<Movement, "currency">): Promise<void> {
+export async function updateMovement(token: string, movement: Omit<Movement, "currency"> & { currency?: Currency }): Promise<void> {
   const row = await findMovementRow(token, movement.id);
   const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`));
   url.searchParams.set("valueInputOption", "USER_ENTERED");
@@ -201,12 +203,12 @@ export async function updateMovement(token: string, movement: Omit<Movement, "cu
         movement.account,
         movement.concept,
         "",
-        "MXN",
+        movement.currency ?? "MXN",
         movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "",
         movement.quantity ?? "",
         movement.averageCost ?? "",
         movement.amount,
-        "",
+        movement.commission ?? "",
         movement.notes,
       ]],
     }),
