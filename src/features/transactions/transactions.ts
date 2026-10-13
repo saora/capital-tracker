@@ -177,6 +177,20 @@ export function renderTransactions(
             </select>
           </label>
 
+          <fieldset class="movement-field movement-field--full movement-direction-field" data-field-category="all">
+            <legend>Tipo de movimiento</legend>
+            <div class="movement-direction-toggle" role="radiogroup" aria-label="Tipo de movimiento">
+              <label class="movement-direction-option movement-direction-option--in">
+                <input type="radio" name="type" value="Entrada" checked />
+                <span>↙ Entrada</span>
+              </label>
+              <label class="movement-direction-option movement-direction-option--out">
+                <input type="radio" name="type" value="Salida" />
+                <span>↗ Salida</span>
+              </label>
+            </div>
+          </fieldset>
+
           <label class="movement-field" data-field-category="all">
             <span>Concepto</span>
             <select name="concept" required>
