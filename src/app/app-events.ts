@@ -172,6 +172,20 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
   app.addEventListener("click", (event: MouseEvent) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
+    const logoutOpen = target.closest<HTMLButtonElement>("[data-session-logout-open]");
+    if (logoutOpen) {
+      const dialog = app.querySelector<HTMLDialogElement>("#session-logout-dialog");
+      if (dialog && !dialog.open) dialog.showModal();
+      return;
+    }
+    const logoutCancel = target.closest<HTMLButtonElement>("[data-session-logout-cancel]");
+    if (logoutCancel) { app.querySelector<HTMLDialogElement>("#session-logout-dialog")?.close(); return; }
+    const logoutConfirm = target.closest<HTMLButtonElement>("[data-session-logout-confirm]");
+    if (logoutConfirm) {
+      app.querySelector<HTMLDialogElement>("#session-logout-dialog")?.close();
+      handlers.onLogout();
+      return;
+    }
     const authActionElement = target.closest<HTMLElement>("[data-auth-action]");
     if (authActionElement) {
       const action = authActionElement.dataset.authAction;
