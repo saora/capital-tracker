@@ -101,8 +101,9 @@ export function renderPage(app: HTMLDivElement): void {
 
     case 'transactions':
       pageHtml = renderTransactions(
-        appState.investmentData?.investments ?? [],
+        appState.catalog,
         appState.movements,
+        appState.movementPeriod,
       );
       break;
 
