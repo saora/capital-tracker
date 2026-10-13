@@ -88,7 +88,6 @@ export function renderPage(app: HTMLDivElement): void {
         : renderDashboard(
             appState.activePeriod,
             appState.investmentData ?? undefined,
-            appState.activeHoldingsCategory,
           );
       break;
 
