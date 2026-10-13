@@ -311,7 +311,7 @@ export async function getInvestmentSheetsData(
   console.log("RESUMEN CALCULADO", {
     capitalInvertido: invested,
     patrimonioTotal: totalValue,
-    gananciaTotal: totalValue - invested,
+    gananciaTotal: summary.totalGain,
     cantidadPosiciones: parsedInvestments.length,
   });
 
