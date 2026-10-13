@@ -41,6 +41,27 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
+function parseGainSummaryAmount(value: unknown): number {
+  const text = String(value ?? "").trim();
+  const match = text.match(/([+-]?\\d+(?:[.,]\\d+)?%)\\s*\\(?\\s*(-?\\$[\\d,]+(?:\\.\\d{2})?)\\s*\\)?/);
+
+  if (!match) {
+    throw new Error(
+      'No se pudo interpretar la ganancia total desde "Renta variable"!A9. ' +
+      "Verifica que la celda contenga el porcentaje y el importe de la ganancia.",
+    );
+  }
+
+  const amountText = match[2].replace(/[$,\\s]/g, "");
+  const amount = Number(amountText);
+
+  if (!Number.isFinite(amount)) {
+    throw new Error('El importe de ganancia en "Renta variable"!A9 no es válido.');
+  }
+
+  return amount;
+}
+
 function normalize(value: unknown): string {
   return String(value ?? "")
     .trim()
@@ -266,10 +287,14 @@ export async function getInvestmentSheetsData(
     ? (dailyChangeAmount / totalValue) * 100
     : 0;
 
+  const gainSummaryText = String(gainSummaryRows[0]?.[0] ?? "").trim();
+  const totalGain = parseGainSummaryAmount(gainSummaryText);
+
   const summary: PortfolioSummary = {
     invested,
     totalValue,
-    totalGain: totalValue - invested,
+    // Use the spreadsheet's gain summary so realized gains from sales are included.
+    totalGain,
     dailyChange,
     currency: "MXN",
   };
@@ -312,6 +337,6 @@ export async function getInvestmentSheetsData(
     investments: parsedInvestments.map((item) => item.investment),
     summary,
     historyPoints,
-    gainSummaryText: String(gainSummaryRows[0]?.[0] ?? "").trim() || undefined,
+    gainSummaryText: gainSummaryText || undefined,
   };
 }
