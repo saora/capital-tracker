@@ -111,7 +111,7 @@ function parseSheetDate(value: unknown): string {
 }
 
 export async function getMovements(token: string): Promise<Movement[]> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:J`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`));
   url.searchParams.set("majorDimension", "ROWS");
   url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
@@ -119,22 +119,25 @@ export async function getMovements(token: string): Promise<Movement[]> {
   const rows = result.values ?? [];
 
   return rows.slice(1).map((row): Movement => {
-    const categoryText = String(row[4] ?? "").trim().toLocaleLowerCase("es-MX");
-    const typeText = String(row[2] ?? "").trim().toLocaleLowerCase("es-MX");
+    const directionText = String(row[2] ?? "").trim().toLocaleLowerCase("es-MX");
+    const movementCategory = String(row[3] ?? "").trim().toLocaleLowerCase("es-MX");
+    const concept = String(row[5] ?? "").trim();
+    const unitPrice = row[8] === undefined || row[8] === "" ? undefined : parseAmount(row[8]);
+    const averageCost = row[10] === undefined || row[10] === "" ? unitPrice : parseAmount(row[10]);
     return {
       id: String(row[0] ?? ""),
       date: parseSheetDate(row[1]),
-      type: typeText === "salida" ? "Salida" : "Entrada",
-      account: String(row[3] ?? "").trim(),
-      category: categoryText.includes("accion") || categoryText.includes("invers")
+      type: directionText === "salida" ? "Salida" : "Entrada",
+      account: String(row[4] ?? "").trim(),
+      category: movementCategory.includes("accion") || movementCategory.includes("invers")
         ? "Acciones"
         : "Cuenta bancaria",
-      amount: parseAmount(row[5]),
-      concept: String(row[6] ?? "").trim(),
-      notes: String(row[7] ?? "").trim(),
-      quantity: row[8] === undefined || row[8] === "" ? undefined : parseAmount(row[8]),
-      averageCost: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
-      currency: "MXN" as Currency,
+      amount: parseAmount(row[11]),
+      concept,
+      notes: String(row[13] ?? "").trim(),
+      quantity: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
+      averageCost,
+      currency: (String(row[7] ?? "MXN").trim() || "MXN") as Currency,
     };
   }).filter((movement) => movement.id && movement.date && movement.account)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -144,7 +147,7 @@ export async function appendMovement(
   token: string,
   movement: Omit<Movement, "currency">,
 ): Promise<void> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:J`) + ":append");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`) + ":append");
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   url.searchParams.set("insertDataOption", "INSERT_ROWS");
 
@@ -153,16 +156,20 @@ export async function appendMovement(
     body: JSON.stringify({
       majorDimension: "ROWS",
       values: [[
-        movement.id,
-        movement.date,
-        movement.type,
-        movement.account,
-        movement.category,
-        movement.amount,
-        movement.concept,
-        movement.notes,
-        movement.quantity ?? "",
-        movement.averageCost ?? "",
+        movement.id,                         // A: Id
+        movement.date,                       // B: Fecha
+        movement.type,                       // C: Categoria (Entrada/Salida)
+        movement.category,                   // D: Tipo (Cuenta bancaria/Acciones)
+        movement.account,                    // E: Cuenta o Activo
+        movement.concept,                    // F: Concepto
+        "",                                   // G: Cantidad (not collected separately by the form)
+        "MXN",                               // H: Moneda
+        movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "", // I: Precio unitario
+        movement.quantity ?? "",             // J: Titulos
+        movement.averageCost ?? "",          // K: Costo promedio
+        movement.amount,                     // L: Importe
+        "",                                   // M: Comision (not collected by the form)
+        movement.notes,                      // N: Notas
       ]],
     }),
   });
@@ -180,12 +187,33 @@ async function findMovementRow(token: string, id: string): Promise<number> {
 }
 export async function updateMovement(token: string, movement: Omit<Movement, "currency">): Promise<void> {
   const row = await findMovementRow(token, movement.id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:J${row}`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`));
   url.searchParams.set("valueInputOption", "USER_ENTERED");
-  await sheetsRequest(token, url.toString(), { method: "PUT", body: JSON.stringify({ majorDimension: "ROWS", values: [[movement.id, movement.date, movement.type, movement.account, movement.category, movement.amount, movement.concept, movement.notes, movement.quantity ?? "", movement.averageCost ?? ""]] }) });
+  await sheetsRequest(token, url.toString(), {
+    method: "PUT",
+    body: JSON.stringify({
+      majorDimension: "ROWS",
+      values: [[
+        movement.id,
+        movement.date,
+        movement.type,
+        movement.category,
+        movement.account,
+        movement.concept,
+        "",
+        "MXN",
+        movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "",
+        movement.quantity ?? "",
+        movement.averageCost ?? "",
+        movement.amount,
+        "",
+        movement.notes,
+      ]],
+    }),
+  });
 }
 export async function deleteMovement(token: string, id: string): Promise<void> {
   const row = await findMovementRow(token, id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:J${row}`) + ":clear");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`) + ":clear");
   await sheetsRequest(token, url.toString(), { method: "POST", body: JSON.stringify({}) });
 }

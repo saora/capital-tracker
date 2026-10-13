@@ -98,7 +98,7 @@ function renderMovement(movement: Movement): string {
         <span class="movement-row__summary-text"><strong>${escapeHtml(movement.account)} · ${escapeHtml(movement.concept || movement.type)}</strong><small>${escapeHtml(formatDate(movement.date))}</small></span>
         <strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong><span class="movement-row__chevron" aria-hidden="true">›</span>
       </button>
-      <section class="movement-row__expanded" data-movement-detail="${escapeHtml(movement.id)}" hidden>
+      <section class="movement-row__expanded" data-movement-detail="${escapeHtml(movement.id)}" tabindex="-1" hidden>
         <div class="movement-row__facts">${facts}</div>
         <div class="movement-row__actions">
           <button type="button" class="movement-icon-button" data-movement-edit="${escapeHtml(movement.id)}" aria-label="Editar movimiento" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
@@ -177,41 +177,58 @@ export function renderTransactions(
             </select>
           </label>
 
+          <fieldset class="movement-field movement-field--full movement-direction-field" data-field-category="Acciones" hidden>
+            <legend>Tipo de movimiento</legend>
+            <div class="movement-direction-toggle" role="radiogroup" aria-label="Tipo de movimiento">
+              <label class="movement-direction-option movement-direction-option--in">
+                <input type="radio" name="type" value="Entrada" checked />
+                <span>↙ Entrada</span>
+              </label>
+              <label class="movement-direction-option movement-direction-option--out">
+                <input type="radio" name="type" value="Salida" />
+                <span>↗ Salida</span>
+              </label>
+            </div>
+          </fieldset>
+
           <label class="movement-field" data-field-category="all">
             <span>Concepto</span>
             <select name="concept" required>
               <option value="Depósito" data-movement-category="Cuenta bancaria">Depósito</option>
               <option value="Retiro" data-movement-category="Cuenta bancaria">Retiro</option>
-              <option value="Compra" data-movement-category="Acciones" hidden>Compra</option>
-              <option value="Venta" data-movement-category="Acciones" hidden>Venta</option>
-              <option value="Dividendo" data-movement-category="Acciones" hidden>Dividendo</option>
-              <option value="Comisión" data-movement-category="Acciones" hidden>Comisión</option>
-              <option value="Otro" data-movement-category="Acciones" hidden>Otro</option>
+              <option value="Compra" data-movement-category="Acciones" data-movement-direction="Entrada" hidden>Compra</option>
+              <option value="Venta" data-movement-category="Acciones" data-movement-direction="Salida" hidden>Venta</option>
+              <option value="Dividendo" data-movement-category="Acciones" data-movement-direction="Entrada" hidden>Dividendo</option>
+              <option value="Comisión" data-movement-category="Acciones" data-movement-direction="Salida" hidden>Comisión</option>
+              <option value="Otro" data-movement-category="Acciones" data-movement-direction="all" hidden>Otro</option>
             </select>
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
             <span>Número de títulos</span>
-            <input name="quantity" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0" disabled />
+            <input name="quantity" type="number" min="1" step="1" inputmode="numeric" placeholder="0" disabled />
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
             <span>Costo promedio</span>
-            <input name="averageCost" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0.00" disabled />
+            <input name="averageCost" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input min="0.01" required disabled />
           </label>
 
           <label class="movement-field" data-field-category="all">
             <span>Importe (MXN)</span>
-            <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required />
+            <input name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="$0.00" data-currency-input required />
           </label>
 
           <label class="movement-field movement-field--full" data-field-category="all">
             <span>Notas (opcional)</span>
-            <textarea name="notes" rows="2" maxlength="500" placeholder="Detalles, referencia o motivo del movimiento"></textarea>
+            <span class="movement-notes-control">
+              <textarea name="notes" rows="2" maxlength="30" placeholder="Detalles, referencia o motivo del movimiento"></textarea>
+              <span class="movement-notes-counter" data-notes-counter aria-live="polite">00/30</span>
+            </span>
           </label>
 
           <p class="movement-form__hint movement-field--full">El registro se guarda en la pestaña Movimientos y no modifica automáticamente los saldos ni las posiciones.</p>
-          <div class="movement-form__actions movement-field--full"><button class="button button--primary movement-submit" type="submit">Guardar movimiento</button><button class="button movement-cancel" type="button" data-movement-cancel hidden>Cancelar</button></div>
+          <div class="movement-form__actions movement-field--full"><button class="button button--primary movement-submit" type="submit" disabled>Guardar movimiento</button><button class="button movement-cancel" type="button" data-movement-cancel hidden>Cancelar</button></div>
           <p id="movement-form-status" class="movement-form__status movement-field--full" role="status" aria-live="polite"></p>
         </form>
       </section>
@@ -228,8 +245,11 @@ export function renderTransactions(
       </dialog>
 
       <div class="movement-success-toast" id="movement-success-toast" role="status" aria-live="polite" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-7"/></svg>
-        <span id="movement-success-message"></span>
+        <svg class="movement-success-toast__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-7"/></svg>
+        <span class="movement-success-toast__message" id="movement-success-message"></span>
+        <button type="button" class="movement-success-toast__close" data-movement-success-close aria-label="Cerrar mensaje de confirmación" title="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
 
       <section class="dashboard__section" id="movement-history-section">
