@@ -12,6 +12,7 @@ import { renderDashboard } from '../features/dashboard/dashboard';
 import { renderPortfolio } from '../features/portfolio/portfolio';
 import { renderTransactions } from '../features/transactions/transactions';
 import { renderWatchlist } from '../features/watchlist/watchlist';
+import { renderSessionView } from '../features/auth/session-view';
 
 import { appState } from './app-state';
 
@@ -109,6 +110,10 @@ export function renderPage(app: HTMLDivElement): void {
 
     case 'watchlist':
       pageHtml = renderWatchlist();
+      break;
+
+    case 'session':
+      pageHtml = renderSessionView();
       break;
   }
 
