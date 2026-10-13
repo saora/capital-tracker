@@ -58,6 +58,8 @@ async function readRange(token: string, range: string): Promise<SheetRow[]> {
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
+    // Portfolio reads must bypass the browser HTTP cache on every refresh.
+    cache: "no-store",
   });
 
   if (!response.ok) {
