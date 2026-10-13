@@ -185,8 +185,10 @@
 .movement-row .is-outgoing { color: var(--color-danger); }
 .movement-empty { padding: 1.5rem .25rem; color: var(--color-text-secondary); font-size: .875rem; line-height: 1.5; text-align: center; }
 @media (max-width: 420px) {
-  .movement-form { grid-template-columns: minmax(0,1fr); }
-  .movement-field--full { grid-column: auto; }
+  /* Mantener dos columnas en el formulario también en iPhone; los campos marcados
+     como --full siguen ocupando ambas columnas. */
+  .movement-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .movement-field--full { grid-column: 1 / -1; }
   .movement-choice-grid { grid-template-columns: minmax(0,1fr); }
   .movement-row__summary { gap: .45rem; }
   .movement-row__amount { font-size: .75rem; }
