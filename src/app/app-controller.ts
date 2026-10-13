@@ -68,7 +68,6 @@ export async function handleGoogleLogout(
     appState.catalog = [];
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
-    appState.activeHoldingsCategory = 'stocks';
     appState.connectionError = '';
   } catch (error) {
     appState.connectionError =
