@@ -98,7 +98,7 @@ function renderMovement(movement: Movement): string {
         <span class="movement-row__summary-text"><strong>${escapeHtml(movement.account)} · ${escapeHtml(movement.concept || movement.type)}</strong><small>${escapeHtml(formatDate(movement.date))}</small></span>
         <strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong><span class="movement-row__chevron" aria-hidden="true">›</span>
       </button>
-      <section class="movement-row__expanded" data-movement-detail="${escapeHtml(movement.id)}" hidden>
+      <section class="movement-row__expanded" data-movement-detail="${escapeHtml(movement.id)}" tabindex="-1" hidden>
         <div class="movement-row__facts">${facts}</div>
         <div class="movement-row__actions">
           <button type="button" class="movement-icon-button" data-movement-edit="${escapeHtml(movement.id)}" aria-label="Editar movimiento" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
