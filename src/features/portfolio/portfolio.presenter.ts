@@ -39,6 +39,7 @@ function formatCurrencyAmount(value: number, currency: "MXN" | "USD"): string {
 export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
+  gainSummaryText?: string,
 ): PortfolioViewModel {
   const positions: PortfolioPosition[] = investments
     .filter(
@@ -103,13 +104,16 @@ export function presentPortfolio(
   const investedValue = positions.reduce((total, position) => total + position.investedValue, 0);
   const totalGain = totalValue - investedValue;
   const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
+  const sheetGainMatch = gainSummaryText?.match(/([+-]?\d+(?:[.,]\d+)?%)\s*\(?\s*(-?\$[\d,]+(?:\.\d{2})?)\s*\)?/);
+  const totalPerformanceLabel = sheetGainMatch?.[1] ?? formatPercent(totalPerformance);
+  const totalGainAmountLabel = sheetGainMatch?.[2] ?? formatCurrencyAmount(totalGain, currency);
 
   return {
     positions,
     totalPositions: positions.length,
     totalValueLabel: formatCurrency(totalValue, currency),
-    totalGainAmountLabel: formatCurrencyAmount(totalGain, currency),
-    totalPerformanceLabel: formatPercent(totalPerformance),
+    totalGainAmountLabel,
+    totalPerformanceLabel,
     totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,
     disclaimer: connected
