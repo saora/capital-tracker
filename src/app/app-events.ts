@@ -6,12 +6,10 @@ import { getSessionAccessToken } from "../features/auth/auth";
 import {
   appState,
   PULL_THRESHOLD,
-  validHoldingsCategories,
   validPeriods,
   validRoutes,
 } from "./app-state";
 
-import type { HoldingsCategory } from "./app-state";
 
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
@@ -201,12 +199,6 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     if (!appStateHasSession()) return;
     const chartPoint = target.closest<HTMLElement>("[data-chart-point]");
     if (chartPoint) { selectChartPoint(chartPoint); return; }
-    const categoryElement = target.closest<HTMLElement>("[data-holdings-category]");
-    if (categoryElement) {
-      const category = categoryElement.dataset.holdingsCategory as HoldingsCategory | undefined;
-      if (category && validHoldingsCategories.includes(category) && category !== appState.activeHoldingsCategory) { appState.activeHoldingsCategory = category; renderPage(app); }
-      return;
-    }
     const periodElement = target.closest<HTMLElement>("[data-performance-period]");
     if (periodElement) {
       const period = periodElement.dataset.performancePeriod as PerformancePeriod | undefined;
