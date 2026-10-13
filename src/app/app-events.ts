@@ -81,6 +81,27 @@ function appStateHasSession(): boolean {
   return Boolean(getSessionAccessToken());
 }
 
+function getMovementFormValues(form: HTMLFormElement): string {
+  return Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea"))
+    .map((field) => {
+      const value = field instanceof HTMLInputElement && (field.type === "radio" || field.type === "checkbox")
+        ? String(field.checked)
+        : field.value;
+      return [field.name, value, String(field.disabled), String(field.required)].join(":");
+    })
+    .join("|");
+}
+
+function updateMovementSubmitState(form: HTMLFormElement): void {
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (!submit || form.dataset.submitting === "true") return;
+
+  const isValid = form.checkValidity();
+  const isEditing = Boolean(form.dataset.editId);
+  const hasChanged = !isEditing || getMovementFormValues(form) !== form.dataset.originalValues;
+  submit.disabled = !isValid || !hasChanged;
+}
+
 function updateInvestmentFields(form: HTMLFormElement, category: string, concept: string): void {
   const isInvestment = category === "Acciones";
   form.querySelectorAll<HTMLElement>("[data-field-concept]").forEach((field) => {
@@ -212,19 +233,18 @@ export function initializeAppEvents(
         delete form.dataset.editId;
         delete form.dataset.confirmedSave;
         delete form.dataset.submitting;
+        delete form.dataset.originalValues;
         form.reset();
         form.querySelectorAll<HTMLOptionElement>("option[data-movement-temporary]").forEach((option) => option.remove());
         const defaultCategory = form.querySelector<HTMLInputElement>('input[name="category"]:checked');
         defaultCategory?.dispatchEvent(new Event("change", { bubbles: true }));
         const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
         conceptSelect?.dispatchEvent(new Event("change", { bubbles: true }));
+        updateMovementSubmitState(form);
         const title = formCard.querySelector<HTMLElement>("#movement-form-title");
         if (title) title.textContent = "Registrar movimiento";
         const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-        if (submit) {
-          submit.textContent = "Guardar movimiento";
-          submit.disabled = false;
-        }
+        if (submit) submit.textContent = "Guardar movimiento";
         const cancel = form.querySelector<HTMLButtonElement>("[data-movement-cancel]");
         if (cancel) cancel.hidden = true;
         const status = form.querySelector<HTMLElement>("#movement-form-status");
@@ -310,6 +330,8 @@ export function initializeAppEvents(
       card.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento";
       form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios";
       form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
+      form.dataset.originalValues = getMovementFormValues(form);
+      updateMovementSubmitState(form);
       const status = form.querySelector<HTMLElement>("#movement-form-status");
       if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
       card.hidden = false; if (add) add.hidden = true;
@@ -462,6 +484,13 @@ export function initializeAppEvents(
     if (counter) counter.textContent = `${String(target.value.length).padStart(2, "0")}/30`;
   });
 
+  app.addEventListener("input", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    if (form) updateMovementSubmitState(form);
+  });
+
   app.addEventListener("change", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || target.name !== "category") return;
@@ -509,6 +538,13 @@ export function initializeAppEvents(
     if (!form) return;
     const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria";
     updateInvestmentFields(form, category, target.value);
+  });
+
+  app.addEventListener("change", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    if (form) updateMovementSubmitState(form);
   });
 
   app.addEventListener("submit", (event: SubmitEvent) => {
@@ -601,7 +637,7 @@ export function initializeAppEvents(
         showMovementSuccess(app, editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.");
       } catch (error) {
         target.dataset.submitting = "false";
-        if (submitButton) submitButton.disabled = false;
+        updateMovementSubmitState(target);
         if (status) {
           status.textContent = error instanceof Error ? error.message : "No fue posible guardar el movimiento.";
           status.className = "movement-form__status movement-field--full is-error";
