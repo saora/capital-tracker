@@ -3,7 +3,8 @@ export type AppRoute =
   | 'dashboard'
   | 'portfolio'
   | 'transactions'
-  | 'watchlist';
+  | 'watchlist'
+  | 'session';
 
 const navigationItems: {
   route: AppRoute;
@@ -26,9 +27,9 @@ const navigationItems: {
     icon: '<path d="M7 7h14"/><path d="m17 3 4 4-4 4"/><path d="M17 17H3"/><path d="m7 13-4 4 4 4"/>',
   },
   {
-    route: 'watchlist',
-    label: 'Watchlist',
-    icon: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/>',
+    route: 'session',
+    label: 'Cuenta',
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   },
 ];
 
