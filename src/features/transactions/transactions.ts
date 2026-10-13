@@ -1,4 +1,3 @@
-import type { Investment } from '../../types/investment';
 import type { Movement, CatalogAsset } from '../../services/movements.service';
 import { formatCurrency } from '../../utils/formatters';
 
