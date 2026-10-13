@@ -101,7 +101,7 @@ export function renderPortfolioTemplate(
       const normalizedLocation = location.toLowerCase();
       const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
       const portfolioWeightHtml = isBrokerage
-        ? `<span class="portfolio-location-card__weight">PESO EN PORTAFOLIO: ${escapeHtml(portfolioWeightLabel)}</span>`
+        ? `<span class="portfolio-location-card__weight">PESO: ${escapeHtml(portfolioWeightLabel)}</span>`
         : '';
       const brokerLogo = isBrokerage
         ? `<span class="portfolio-location-card__logo"><img src="${import.meta.env.BASE_URL}logos/holdings/${normalizedLocation}.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" /></span>`
