@@ -2,6 +2,42 @@ import type { Currency } from "../types/investment";
 
 const API_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 const MOVEMENTS_SHEET = "Movimientos";
+const CATALOG_SHEET = "Catalogo";
+
+export type CatalogAssetType = "Banco" | "ETF" | "Crypto" | "Accion";
+export interface CatalogAsset {
+  name: string;
+  type: CatalogAssetType;
+}
+
+export async function getCatalog(token: string): Promise<CatalogAsset[]> {
+  const url = new URL(valuesUrl(`'${CATALOG_SHEET}'!A:B`));
+  url.searchParams.set("majorDimension", "ROWS");
+  url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+  const result = await sheetsRequest<{ values?: SheetRow[] }>(token, url.toString());
+  const rows = result.values ?? [];
+  const allowedTypes = new Map<string, CatalogAssetType>([
+    ["banco", "Banco"],
+    ["etf", "ETF"],
+    ["crypto", "Crypto"],
+    ["cripto", "Crypto"],
+    ["accion", "Accion"],
+    ["acción", "Accion"],
+  ]);
+
+  return rows.slice(1).map((row) => {
+    const name = String(row[0] ?? "").trim();
+    const rawType = String(row[1] ?? "").trim().toLocaleLowerCase("es-MX");
+    return { name, type: allowedTypes.get(rawType) };
+  }).filter((item): item is CatalogAsset => Boolean(item.name && item.type))
+    .filter((item, index, all) =>
+      all.findIndex((candidate) =>
+        candidate.name.toLocaleLowerCase("es-MX") === item.name.toLocaleLowerCase("es-MX") &&
+        candidate.type === item.type
+      ) === index
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "es-MX"));
+}
 
 export type MovementCategory = "Cuenta bancaria" | "Acciones";
 export type MovementType = "Entrada" | "Salida";
