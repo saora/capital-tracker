@@ -236,7 +236,8 @@ export function initializeAppEvents(
         movementFormToggle.hidden = true;
         const history = app.querySelector<HTMLElement>("#movement-history-section");
         if (history) history.hidden = true;
-        formCard.querySelector<HTMLInputElement>('input[name="date"]')?.focus();
+        formCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        formCard.querySelector<HTMLElement>("#movement-form-title")?.focus({ preventScroll: true });
       }
       return;
     }
@@ -245,7 +246,16 @@ export function initializeAppEvents(
     if (expandMovement) {
       const row = expandMovement.closest<HTMLElement>("[data-movement-row]");
       const detail = row?.querySelector<HTMLElement>("[data-movement-detail]");
-      if (row && detail) { detail.hidden = !detail.hidden; row.classList.toggle("is-expanded", !detail.hidden); expandMovement.setAttribute("aria-expanded", String(!detail.hidden)); }
+      if (row && detail) {
+        const opening = detail.hidden;
+        detail.hidden = !opening;
+        row.classList.toggle("is-expanded", opening);
+        expandMovement.setAttribute("aria-expanded", String(opening));
+        if (opening) {
+          detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          detail.focus({ preventScroll: true });
+        }
+      }
       return;
     }
     const cancelEdit = target.closest<HTMLButtonElement>("[data-movement-cancel]");
