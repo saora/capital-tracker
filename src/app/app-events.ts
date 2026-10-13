@@ -205,8 +205,33 @@ export function initializeAppEvents(
 
     const movementFormToggle = target.closest<HTMLButtonElement>("[data-movement-form-toggle]");
     if (movementFormToggle) {
+      const form = app.querySelector<HTMLFormElement>("#movement-form");
       const formCard = app.querySelector<HTMLElement>("#movement-form-card");
-      if (formCard) {
+      if (form && formCard) {
+        // El botón + siempre inicia un registro nuevo, nunca conserva el modo edición.
+        delete form.dataset.editId;
+        delete form.dataset.confirmedSave;
+        delete form.dataset.submitting;
+        form.reset();
+        form.querySelectorAll<HTMLOptionElement>("option[data-movement-temporary]").forEach((option) => option.remove());
+        const defaultCategory = form.querySelector<HTMLInputElement>('input[name="category"]:checked');
+        defaultCategory?.dispatchEvent(new Event("change", { bubbles: true }));
+        const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+        conceptSelect?.dispatchEvent(new Event("change", { bubbles: true }));
+        const title = formCard.querySelector<HTMLElement>("#movement-form-title");
+        if (title) title.textContent = "Registrar movimiento";
+        const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (submit) {
+          submit.textContent = "Guardar movimiento";
+          submit.disabled = false;
+        }
+        const cancel = form.querySelector<HTMLButtonElement>("[data-movement-cancel]");
+        if (cancel) cancel.hidden = true;
+        const status = form.querySelector<HTMLElement>("#movement-form-status");
+        if (status) {
+          status.textContent = "";
+          status.className = "movement-form__status movement-field--full";
+        }
         formCard.hidden = false;
         movementFormToggle.hidden = true;
         const history = app.querySelector<HTMLElement>("#movement-history-section");
@@ -260,7 +285,7 @@ export function initializeAppEvents(
       if (dateInput) dateInput.value = movement.date;
       if (accountSelect) {
         if (!Array.from(accountSelect.options).some((option) => option.value === movement.account)) {
-          const option = document.createElement("option"); option.value = movement.account; option.textContent = movement.account; accountSelect.append(option);
+          const option = document.createElement("option"); option.value = movement.account; option.textContent = movement.account; option.dataset.movementTemporary = "true"; accountSelect.append(option);
         }
         accountSelect.value = movement.account; accountSelect.disabled = false; accountSelect.required = true;
       }
