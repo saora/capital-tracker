@@ -173,15 +173,15 @@
 }
 .movement-success-toast {
   position: fixed;
-  z-index: 1000;
+  z-index: 2000;
+  top: max(1rem, env(safe-area-inset-top));
   left: 50%;
-  bottom: max(1.25rem, env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: .7rem;
   width: max-content;
-  max-width: calc(100% - 2rem);
-  padding: .85rem 1.1rem;
+  max-width: min(34rem, calc(100% - 2rem));
+  padding: .8rem .75rem .8rem 1rem;
   color: var(--color-text-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -192,7 +192,7 @@
   font-weight: 600;
 }
 .movement-success-toast[hidden] { display: none; }
-.movement-success-toast svg {
+.movement-success-toast__icon {
   flex: 0 0 1.35rem;
   width: 1.35rem;
   height: 1.35rem;
@@ -201,4 +201,33 @@
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.movement-success-toast__message { min-width: 0; overflow-wrap: anywhere; }
+.movement-success-toast__close {
+  display: grid;
+  flex: 0 0 2rem;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin: -.3rem -.35rem -.3rem .1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+.movement-success-toast__close:hover { color: var(--color-text-primary); background: var(--color-bg); }
+.movement-success-toast__close:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 1px; }
+.movement-success-toast__close svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 420px) {
+  .movement-success-toast { width: calc(100% - 2rem); }
 }
