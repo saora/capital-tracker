@@ -119,14 +119,17 @@ export async function getMovements(token: string): Promise<Movement[]> {
   const rows = result.values ?? [];
 
   return rows.slice(1).map((row): Movement => {
-    const categoryText = String(row[4] ?? "").trim().toLocaleLowerCase("es-MX");
     const typeText = String(row[2] ?? "").trim().toLocaleLowerCase("es-MX");
+    const categoryText = String(row[4] ?? "").trim().toLocaleLowerCase("es-MX");
+    const isNewSchema = ["cuenta bancaria", "acciones"].includes(typeText);
+    const directionText = isNewSchema ? categoryText : typeText;
+    const movementCategoryText = isNewSchema ? typeText : categoryText;
     return {
       id: String(row[0] ?? ""),
       date: parseSheetDate(row[1]),
-      type: typeText === "salida" ? "Salida" : "Entrada",
+      type: directionText === "salida" ? "Salida" : "Entrada",
       account: String(row[3] ?? "").trim(),
-      category: categoryText.includes("accion") || categoryText.includes("invers")
+      category: movementCategoryText.includes("accion") || movementCategoryText.includes("invers")
         ? "Acciones"
         : "Cuenta bancaria",
       amount: parseAmount(row[5]),
@@ -155,9 +158,9 @@ export async function appendMovement(
       values: [[
         movement.id,
         movement.date,
-        movement.type,
-        movement.account,
         movement.category,
+        movement.account,
+        movement.type,
         movement.amount,
         movement.concept,
         movement.notes,
@@ -182,7 +185,7 @@ export async function updateMovement(token: string, movement: Omit<Movement, "cu
   const row = await findMovementRow(token, movement.id);
   const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:J${row}`));
   url.searchParams.set("valueInputOption", "USER_ENTERED");
-  await sheetsRequest(token, url.toString(), { method: "PUT", body: JSON.stringify({ majorDimension: "ROWS", values: [[movement.id, movement.date, movement.type, movement.account, movement.category, movement.amount, movement.concept, movement.notes, movement.quantity ?? "", movement.averageCost ?? ""]] }) });
+  await sheetsRequest(token, url.toString(), { method: "PUT", body: JSON.stringify({ majorDimension: "ROWS", values: [[movement.id, movement.date, movement.category, movement.account, movement.type, movement.amount, movement.concept, movement.notes, movement.quantity ?? "", movement.averageCost ?? ""]] }) });
 }
 export async function deleteMovement(token: string, id: string): Promise<void> {
   const row = await findMovementRow(token, id);
