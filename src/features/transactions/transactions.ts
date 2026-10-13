@@ -216,6 +216,17 @@ export function renderTransactions(
         </form>
       </section>
 
+      <dialog class="movement-confirm-dialog" id="movement-delete-dialog" aria-labelledby="movement-delete-title">
+        <div class="movement-confirm-dialog__content">
+          <h2 id="movement-delete-title">Eliminar movimiento</h2>
+          <p>¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
+          <div class="movement-confirm-dialog__actions">
+            <button type="button" class="button" data-movement-delete-cancel>Cancelar</button>
+            <button type="button" class="button button--danger" data-movement-delete-confirm>Eliminar</button>
+          </div>
+        </div>
+      </dialog>
+
       <section class="dashboard__section">
         <div class="section-heading">
           <h2>Historial</h2>
