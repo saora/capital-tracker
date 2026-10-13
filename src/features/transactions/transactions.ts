@@ -1,5 +1,5 @@
 import type { Investment } from '../../types/investment';
-import type { Movement } from '../../services/movements.service';
+import type { Movement, CatalogAsset } from '../../services/movements.service';
 import { formatCurrency } from '../../utils/formatters';
 
 function escapeHtml(value: string): string {
@@ -26,22 +26,57 @@ function formatDate(date: string): string {
       }).format(parsed);
 }
 
-function accountOptions(investments: Investment[], category: 'Cuenta bancaria' | 'Acciones'): string {
-  const eligible = investments.filter((investment) =>
+function accountOptions(catalog: CatalogAsset[], category: 'Cuenta bancaria' | 'Acciones'): string {
+  const eligible = catalog.filter((asset) =>
     category === 'Cuenta bancaria'
-      ? investment.assetType === 'fixed-income' || investment.assetType === 'bank-account'
-      : investment.assetType === 'stock' || investment.assetType === 'etf' || investment.assetType === 'crypto',
+      ? asset.type === 'Banco'
+      : asset.type === 'Accion' || asset.type === 'ETF' || asset.type === 'Crypto',
   );
-  const unique = new Map<string, string>();
-  eligible.forEach((investment) => {
-    const value = category === 'Cuenta bancaria'
-      ? investment.name
-      : investment.symbol;
-    if (value) unique.set(value, value);
-  });
-  return Array.from(unique.values()).sort((a, b) => a.localeCompare(b, 'es-MX'))
-    .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+  return eligible
+    .map((asset) => `<option value="${escapeHtml(asset.name)}">${escapeHtml(asset.name)}</option>`)
     .join('');
+}
+
+type MovementPeriod = '1D' | '1S' | '1M' | '1A';
+
+const movementPeriodLabels: Record<MovementPeriod, string> = {
+  '1D': '1D',
+  '1S': '1S',
+  '1M': '1M',
+  '1A': '1A',
+};
+
+function localDateValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function filterMovements(movements: Movement[], period: MovementPeriod): Movement[] {
+  const today = new Date();
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const start = new Date(end);
+  if (period === '1D') {
+    // Only movements made today.
+  } else if (period === '1S') {
+    start.setDate(start.getDate() - 6);
+  } else if (period === '1M') {
+    start.setDate(start.getDate() - 29);
+  } else {
+    start.setDate(start.getDate() - 364);
+  }
+  const startDate = localDateValue(start);
+  const endDate = localDateValue(end);
+  return movements.filter((movement) => movement.date >= startDate && movement.date <= endDate);
+}
+
+function renderMovementPeriods(selected: MovementPeriod): string {
+  return (Object.entries(movementPeriodLabels) as [MovementPeriod, string][])
+    .map(([period, label]) => `
+      <button type="button" class="chart-period${period === selected ? ' chart-period--active' : ''}"
+        data-movement-period="${period}" aria-pressed="${period === selected}">${label}</button>
+    `).join('');
 }
 
 function renderMovement(movement: Movement): string {
@@ -64,14 +99,16 @@ function renderMovement(movement: Movement): string {
 }
 
 export function renderTransactions(
-  investments: Investment[] = [],
+  catalog: CatalogAsset[] = [],
   movements: Movement[] = [],
+  selectedPeriod: MovementPeriod = '1M',
 ): string {
-  const bankOptions = accountOptions(investments, 'Cuenta bancaria');
-  const assetOptions = accountOptions(investments, 'Acciones');
-  const movementsHtml = movements.length
-    ? movements.map(renderMovement).join('')
-    : '<div class="movement-empty">Todavía no hay movimientos registrados. Usa el formulario para agregar el primero.</div>';
+  const bankOptions = accountOptions(catalog, 'Cuenta bancaria');
+  const assetOptions = accountOptions(catalog, 'Acciones');
+  const filteredMovements = filterMovements(movements, selectedPeriod);
+  const movementsHtml = filteredMovements.length
+    ? filteredMovements.map(renderMovement).join('')
+    : '<div class="movement-empty">No hay movimientos en este periodo.</div>';
 
   return `
     <section class="transactions-page">
@@ -158,7 +195,10 @@ export function renderTransactions(
       <section class="dashboard__section">
         <div class="section-heading">
           <h2>Historial</h2>
-          <span class="section-count">${movements.length}</span>
+          <span class="section-count">${filteredMovements.length}</span>
+        </div>
+        <div class="chart-periods movement-periods" role="group" aria-label="Filtrar historial de movimientos">
+          ${renderMovementPeriods(selectedPeriod)}
         </div>
         <div class="card movement-history">
           ${movementsHtml}
