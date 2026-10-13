@@ -30,7 +30,7 @@
 .movement-add-button:hover { transform: scale(1.05); }
 .movement-add-button:focus-visible { outline: 3px solid var(--color-brand-500); outline-offset: 3px; }
 .movement-add-button[hidden] { display: none; }
-.movement-form-card[hidden] { display: none; }
+.movement-form-card[hidden], .movement-field[hidden] { display: none; }
 
 .movement-sheet-badge {
   color: var(--color-text-secondary);
