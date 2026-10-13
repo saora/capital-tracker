@@ -63,7 +63,7 @@ function renderPeriods(
         <button
           type="button"
           class="chart-period${isActive ? ' chart-period--active' : ''}"
-          data-period="${period}"
+          data-performance-period="${period}"
           aria-pressed="${isActive}"
         >${label}</button>
       `;
@@ -166,13 +166,18 @@ function renderInteractivePoints(
 
       const left = (coordinate.x / CHART_WIDTH) * 100;
       const top = (coordinate.y / CHART_HEIGHT) * 100;
+      const isLastPoint = index === points.length - 1;
 
       return `
         <button
           type="button"
-          class="performance-chart__point"
+          class="performance-chart__point${isLastPoint ? ' performance-chart__point--last' : ''}"
+          data-chart-point
+          data-chart-date="${escapeHtml(label)}"
+          data-chart-value="${escapeHtml(valueLabel)}"
           style="left: ${left}%; top: ${top}%"
           aria-label="${escapeHtml(accessibleLabel)}"
+          aria-pressed="false"
           title="${escapeHtml(`${label}: ${valueLabel}`)}"
         >
           <span
@@ -291,6 +296,7 @@ function renderChartSvg(
 
       <div
         class="performance-chart__interaction"
+        data-chart-interactive
         role="group"
         aria-label="Consultar valores de la gráfica"
       >

@@ -9,6 +9,7 @@ import './features/auth/session-header.css';
 import './components/skeleton-loader/skeleton-loader.css';
 import './features/auth/auth.css';
 import './features/dashboard/dashboard.css';
+import './features/transactions/transactions.css';
 import './components/asset-logo/asset-logo.css';
 import './components/bottom-nav/bottom-nav.css';
 import './main.css';

@@ -64,6 +64,8 @@ export async function handleGoogleLogout(
     await endGoogleSession();
 
     appState.investmentData = null;
+    appState.movements = [];
+    appState.catalog = [];
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
     appState.activeHoldingsCategory = 'stocks';

@@ -15,6 +15,7 @@ import type { HoldingsCategory } from "./app-state";
 
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
+import { appendMovement, deleteMovement, getMovements, updateMovement } from "../services/movements.service";
 import { closeAccountMenu } from "./session-menu";
 
 interface AppEventHandlers {
@@ -34,7 +35,7 @@ function selectChartPoint(point: HTMLElement): void {
   points.forEach((item) => {
     const isSelected = item === point;
 
-    item.classList.toggle("is-selected", isSelected);
+    item.classList.toggle("performance-chart__point--selected", isSelected);
     item.setAttribute("aria-pressed", String(isSelected));
   });
 
@@ -78,6 +79,20 @@ function selectNearestChartPoint(points: HTMLElement[], targetX: number): void {
 
 function appStateHasSession(): boolean {
   return Boolean(getSessionAccessToken());
+}
+
+function updateInvestmentFields(form: HTMLFormElement, category: string, concept: string): void {
+  const isInvestment = category === "Acciones";
+  form.querySelectorAll<HTMLElement>("[data-field-concept]").forEach((field) => {
+    const concepts = (field.dataset.fieldConcept ?? "").split(",");
+    const visible = isInvestment && concepts.includes(concept);
+    field.hidden = !visible;
+    field.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
+      input.disabled = !visible;
+      input.required = visible;
+      if (!visible) input.value = "";
+    });
+  });
 }
 
 export function initializeAppEvents(
@@ -188,6 +203,181 @@ export function initializeAppEvents(
       return;
     }
 
+    const movementFormToggle = target.closest<HTMLButtonElement>("[data-movement-form-toggle]");
+    if (movementFormToggle) {
+      const form = app.querySelector<HTMLFormElement>("#movement-form");
+      const formCard = app.querySelector<HTMLElement>("#movement-form-card");
+      if (form && formCard) {
+        // El botón + siempre inicia un registro nuevo, nunca conserva el modo edición.
+        delete form.dataset.editId;
+        delete form.dataset.confirmedSave;
+        delete form.dataset.submitting;
+        form.reset();
+        form.querySelectorAll<HTMLOptionElement>("option[data-movement-temporary]").forEach((option) => option.remove());
+        const defaultCategory = form.querySelector<HTMLInputElement>('input[name="category"]:checked');
+        defaultCategory?.dispatchEvent(new Event("change", { bubbles: true }));
+        const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+        conceptSelect?.dispatchEvent(new Event("change", { bubbles: true }));
+        const title = formCard.querySelector<HTMLElement>("#movement-form-title");
+        if (title) title.textContent = "Registrar movimiento";
+        const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        if (submit) {
+          submit.textContent = "Guardar movimiento";
+          submit.disabled = false;
+        }
+        const cancel = form.querySelector<HTMLButtonElement>("[data-movement-cancel]");
+        if (cancel) cancel.hidden = true;
+        const status = form.querySelector<HTMLElement>("#movement-form-status");
+        if (status) {
+          status.textContent = "";
+          status.className = "movement-form__status movement-field--full";
+        }
+        formCard.hidden = false;
+        movementFormToggle.hidden = true;
+        const history = app.querySelector<HTMLElement>("#movement-history-section");
+        if (history) history.hidden = true;
+        formCard.querySelector<HTMLInputElement>('input[name="date"]')?.focus();
+      }
+      return;
+    }
+
+    const expandMovement = target.closest<HTMLButtonElement>("[data-movement-expand]");
+    if (expandMovement) {
+      const row = expandMovement.closest<HTMLElement>("[data-movement-row]");
+      const detail = row?.querySelector<HTMLElement>("[data-movement-detail]");
+      if (row && detail) { detail.hidden = !detail.hidden; row.classList.toggle("is-expanded", !detail.hidden); expandMovement.setAttribute("aria-expanded", String(!detail.hidden)); }
+      return;
+    }
+    const cancelEdit = target.closest<HTMLButtonElement>("[data-movement-cancel]");
+    if (cancelEdit) {
+      const form = app.querySelector<HTMLFormElement>("#movement-form");
+      const card = app.querySelector<HTMLElement>("#movement-form-card");
+      const add = app.querySelector<HTMLButtonElement>("[data-movement-form-toggle]");
+      if (form) { delete form.dataset.editId; form.reset(); }
+      if (card) card.hidden = true;
+      if (add) add.hidden = false;
+      renderPage(app);
+      return;
+    }
+
+    const editButton = target.closest<HTMLButtonElement>("[data-movement-edit]");
+    if (editButton) {
+      const movement = appState.movements.find((item) => item.id === editButton.dataset.movementEdit);
+      const form = app.querySelector<HTMLFormElement>("#movement-form");
+      const card = app.querySelector<HTMLElement>("#movement-form-card");
+      const add = app.querySelector<HTMLButtonElement>("[data-movement-form-toggle]");
+      if (!movement || !form || !card) { window.alert("No se encontró la información de este movimiento. Actualiza el historial e inténtalo de nuevo."); return; }
+      form.reset();
+      form.dataset.editId = movement.id;
+      const categoryRadio = form.querySelector<HTMLInputElement>(`input[name="category"][value="${movement.category}"]`);
+      if (categoryRadio) { categoryRadio.checked = true; categoryRadio.dispatchEvent(new Event("change", { bubbles: true })); }
+      const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+      if (conceptSelect) {
+        const option = Array.from(conceptSelect.options).find((item) => item.value === movement.concept);
+        if (option) option.hidden = false;
+        conceptSelect.value = movement.concept;
+        conceptSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      const dateInput = form.querySelector<HTMLInputElement>('input[name="date"]');
+      const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
+      const notesInput = form.querySelector<HTMLTextAreaElement>('textarea[name="notes"]');
+      const accountSelect = form.querySelector<HTMLSelectElement>(movement.category === "Acciones" ? "#movement-asset" : "#movement-account");
+      if (dateInput) dateInput.value = movement.date;
+      if (accountSelect) {
+        if (!Array.from(accountSelect.options).some((option) => option.value === movement.account)) {
+          const option = document.createElement("option"); option.value = movement.account; option.textContent = movement.account; option.dataset.movementTemporary = "true"; accountSelect.append(option);
+        }
+        accountSelect.value = movement.account; accountSelect.disabled = false; accountSelect.required = true;
+      }
+      if (amountInput) amountInput.value = String(movement.amount);
+      if (notesInput) notesInput.value = movement.notes;
+      const quantity = form.querySelector<HTMLInputElement>('input[name="quantity"]');
+      const average = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
+      const needsQuantity = movement.category === "Acciones" && ["Compra", "Venta"].includes(movement.concept);
+      const needsAverage = movement.category === "Acciones" && movement.concept === "Compra";
+      if (quantity) { quantity.value = movement.quantity === undefined ? "" : String(movement.quantity); quantity.disabled = !needsQuantity; quantity.required = needsQuantity; quantity.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsQuantity; }
+      if (average) { average.value = movement.averageCost === undefined ? "" : String(movement.averageCost); average.disabled = !needsAverage; average.required = needsAverage; average.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsAverage; }
+      card.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento";
+      form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios";
+      form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
+      const status = form.querySelector<HTMLElement>("#movement-form-status");
+      if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
+      card.hidden = false; if (add) add.hidden = true;
+      const history = app.querySelector<HTMLElement>("#movement-history-section");
+      if (history) history.hidden = true;
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+      dateInput?.focus({ preventScroll: true });
+      return;
+    }
+
+    const deleteButton = target.closest<HTMLButtonElement>("[data-movement-delete]");
+    if (deleteButton) {
+      const id = deleteButton.dataset.movementDelete;
+      const dialog = app.querySelector<HTMLDialogElement>("#movement-action-dialog");
+      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-action-confirm]");
+      if (!id || !dialog || !confirmButton) return;
+      dialog.dataset.action = "delete";
+      dialog.dataset.movementId = id;
+      app.querySelector<HTMLElement>("#movement-action-title")!.textContent = "Eliminar movimiento";
+      app.querySelector<HTMLElement>("#movement-action-message")!.textContent = "¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.";
+      confirmButton.textContent = "Eliminar";
+      confirmButton.classList.remove("button--primary");
+      confirmButton.classList.add("button--danger");
+      confirmButton.disabled = false;
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+
+    const cancelAction = target.closest<HTMLButtonElement>("[data-movement-action-cancel]");
+    if (cancelAction) {
+      app.querySelector<HTMLDialogElement>("#movement-action-dialog")?.close();
+      return;
+    }
+
+    const confirmAction = target.closest<HTMLButtonElement>("[data-movement-action-confirm]");
+    if (confirmAction) {
+      const dialog = confirmAction.closest<HTMLDialogElement>("#movement-action-dialog");
+      if (!dialog) return;
+      const action = dialog.dataset.action;
+      if (action === "save") {
+        dialog.close();
+        const form = app.querySelector<HTMLFormElement>("#movement-form");
+        if (form) {
+          form.dataset.confirmedSave = "true";
+          form.requestSubmit();
+        }
+        return;
+      }
+      const id = dialog.dataset.movementId;
+      const token = getSessionAccessToken();
+      if (action !== "delete" || !id) return;
+      confirmAction.disabled = true;
+      void (async () => {
+        try {
+          if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión.");
+          await deleteMovement(token, id);
+          appState.movements = appState.movements.filter((item) => item.id !== id);
+          dialog.close();
+          renderPage(app);
+          showMovementSuccess(app, "Movimiento eliminado correctamente.");
+        } catch (error) {
+          confirmAction.disabled = false;
+          window.alert(error instanceof Error ? error.message : "No fue posible eliminar el movimiento.");
+        }
+      })();
+      return;
+    }
+
+      const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
+    if (movementPeriodElement) {
+      const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined;
+      if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) {
+        appState.movementPeriod = period;
+        renderPage(app);
+      }
+      return;
+    }
+
     const routeElement = target.closest<HTMLElement>("[data-route]");
 
     if (routeElement) {
@@ -254,7 +444,169 @@ export function initializeAppEvents(
     }
   });
 
+  app.addEventListener("change", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.name !== "category") return;
+
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    if (!form) return;
+    const category = target.value;
+
+    form.querySelectorAll<HTMLElement>("[data-field-category]").forEach((field) => {
+      const categories = field.dataset.fieldCategory ?? "all";
+      const visible = categories === "all" || categories === category;
+      field.hidden = !visible;
+      field.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea").forEach((input) => {
+        if (input.name === "date" || input.name === "amount" || input.name === "notes" || input.name === "concept") return;
+        input.disabled = !visible;
+        if (!visible) input.required = false;
+      });
+    });
+
+    const bankSelect = form.querySelector<HTMLSelectElement>("#movement-account");
+    const assetSelect = form.querySelector<HTMLSelectElement>("#movement-asset");
+    if (bankSelect) {
+      bankSelect.disabled = category !== "Cuenta bancaria";
+      bankSelect.required = category === "Cuenta bancaria";
+      bankSelect.value = "";
+    }
+    if (assetSelect) {
+      assetSelect.disabled = category !== "Acciones";
+      assetSelect.required = category === "Acciones";
+      assetSelect.value = "";
+    }
+
+    const conceptSelect = form.querySelector<HTMLSelectElement>('select[name="concept"]');
+    conceptSelect?.querySelectorAll<HTMLOptionElement>("option[data-movement-category]").forEach((option) => {
+      option.hidden = option.dataset.movementCategory !== category;
+    });
+    if (conceptSelect) conceptSelect.value = category === "Acciones" ? "Compra" : "Depósito";
+    updateInvestmentFields(form, category, conceptSelect?.value ?? "");
+  });
+
+  app.addEventListener("change", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement) || target.name !== "concept") return;
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    if (!form) return;
+    const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria";
+    updateInvestmentFields(form, category, target.value);
+  });
+
+  app.addEventListener("submit", (event: SubmitEvent) => {
+    const target = event.target;
+    if (!(target instanceof HTMLFormElement) || target.id !== "movement-form") return;
+
+    event.preventDefault();
+    if (target.dataset.submitting === "true") return;
+
+    if (target.dataset.confirmedSave !== "true") {
+      if (!target.reportValidity()) return;
+      const dialog = app.querySelector<HTMLDialogElement>("#movement-action-dialog");
+      const confirmButton = dialog?.querySelector<HTMLButtonElement>("[data-movement-action-confirm]");
+      if (!dialog || !confirmButton) return;
+      dialog.dataset.action = "save";
+      delete dialog.dataset.movementId;
+      app.querySelector<HTMLElement>("#movement-action-title")!.textContent = "Confirmar registro";
+      app.querySelector<HTMLElement>("#movement-action-message")!.textContent = "¿Deseas guardar este movimiento?";
+      confirmButton.textContent = "Aceptar";
+      confirmButton.classList.remove("button--danger");
+      confirmButton.classList.add("button--primary");
+      confirmButton.disabled = false;
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    delete target.dataset.confirmedSave;
+
+    const token = getSessionAccessToken();
+    const status = target.querySelector<HTMLElement>("#movement-form-status");
+    const submitButton = target.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const formData = new FormData(target);
+    const date = String(formData.get("date") ?? "").trim();
+    const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones";
+    const concept = String(formData.get("concept") ?? "").trim();
+    const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account");
+    const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset");
+    const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? "";
+    const amount = Number(formData.get("amount"));
+    const notes = String(formData.get("notes") ?? "").trim();
+    const quantityRaw = String(formData.get("quantity") ?? "").trim();
+    const averageCostRaw = String(formData.get("averageCost") ?? "").trim();
+    const quantity = quantityRaw ? Number(quantityRaw) : undefined;
+    const averageCost = averageCostRaw ? Number(averageCostRaw) : undefined;
+    const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept);
+    const isBuy = category === "Acciones" && concept === "Compra";
+    const type = category === "Cuenta bancaria"
+      ? (concept === "Depósito" ? "Entrada" : "Salida")
+      : (["Venta", "Dividendo"].includes(concept) ? "Entrada" : "Salida");
+
+    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 ||
+      (isTrade && (quantity === undefined || !Number.isFinite(quantity) || quantity <= 0)) ||
+      (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0))) {
+      if (status) {
+        status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y los importes requeridos.";
+        status.className = "movement-form__status movement-field--full is-error";
+      }
+      return;
+    }
+
+    target.dataset.submitting = "true";
+    if (submitButton) submitButton.disabled = true;
+    if (status) {
+      status.textContent = "Guardando en Google Sheets…";
+      status.className = "movement-form__status movement-field--full";
+    }
+
+    void (async () => {
+      try {
+        const editId = target.dataset.editId;
+        const savedMovement = {
+          id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida",
+          account: selectedAccount, category, amount, concept, notes,
+          ...(isTrade && quantity !== undefined ? { quantity } : {}),
+          ...(isBuy && averageCost !== undefined ? { averageCost } : {}),
+          currency: "MXN" as const,
+        };
+        if (editId) {
+          await updateMovement(token, savedMovement);
+          appState.movements = appState.movements.map((item) => item.id === editId ? savedMovement : item).sort((a, b) => b.date.localeCompare(a.date));
+        } else {
+          await appendMovement(token, savedMovement);
+          appState.movements = [savedMovement, ...appState.movements].sort((a, b) => b.date.localeCompare(a.date));
+        }
+        try {
+          appState.movements = await getMovements(token);
+        } catch {
+          // El append ya fue confirmado; conserva el registro local en pantalla.
+        }
+        renderPage(app);
+        showMovementSuccess(app, editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.");
+      } catch (error) {
+        target.dataset.submitting = "false";
+        if (submitButton) submitButton.disabled = false;
+        if (status) {
+          status.textContent = error instanceof Error ? error.message : "No fue posible guardar el movimiento.";
+          status.className = "movement-form__status movement-field--full is-error";
+        }
+      }
+    })();
+  });
+
   initializePullToRefresh(app);
+}
+
+function showMovementSuccess(app: HTMLDivElement, message: string): void {
+  const toast = app.querySelector<HTMLElement>("#movement-success-toast");
+  const messageElement = app.querySelector<HTMLElement>("#movement-success-message");
+  if (!toast || !messageElement) return;
+  const previousTimer = Number(toast.dataset.hideTimer);
+  if (previousTimer) window.clearTimeout(previousTimer);
+  messageElement.textContent = message;
+  toast.hidden = false;
+  toast.dataset.hideTimer = String(window.setTimeout(() => {
+    toast.hidden = true;
+    delete toast.dataset.hideTimer;
+  }, 3500));
 }
 
 function initializePullToRefresh(app: HTMLDivElement): void {

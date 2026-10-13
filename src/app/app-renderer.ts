@@ -100,7 +100,11 @@ export function renderPage(app: HTMLDivElement): void {
       break;
 
     case 'transactions':
-      pageHtml = renderTransactions();
+      pageHtml = renderTransactions(
+        appState.catalog,
+        appState.movements,
+        appState.movementPeriod,
+      );
       break;
 
     case 'watchlist':

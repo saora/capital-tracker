@@ -24,6 +24,10 @@ function formatCurrencyAmount(value: number, currency: PortfolioPosition['curren
 export function renderPortfolioTemplate(
   viewModel: PortfolioViewModel,
 ): string {
+  const totalPortfolioValue = viewModel.positions.reduce(
+    (total, position) => total + position.currentValue,
+    0,
+  );
   const positionsByLocation = new Map<string, PortfolioPosition[]>();
 
   viewModel.positions.forEach((position) => {
@@ -34,7 +38,11 @@ export function renderPortfolioTemplate(
   });
 
   const positionsHtml = Array.from(positionsByLocation.entries())
-    .map(([location, positions]) => {
+    .map(([location, groupedPositions]) => {
+      // Sort by portfolio weight (equivalent to current value because all positions share the same portfolio denominator).
+      const positions = [...groupedPositions].sort(
+        (a, b) => b.currentValue - a.currentValue,
+      );
       const rowsHtml = positions
         .map((position) => {
           const logoViewModel = presentAssetLogo({
@@ -77,23 +85,54 @@ export function renderPortfolioTemplate(
         .join('');
 
       const invested = positions.reduce((total, position) => total + position.investedValue, 0);
+      const currentValue = positions.reduce((total, position) => total + position.currentValue, 0);
       const gain = positions.reduce((total, position) => total + position.gainValue, 0);
       const performance = invested > 0 ? (gain / invested) * 100 : 0;
       const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
       const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
+      const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
+      const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
+      const performanceLabel = formatPercent(performance);
+      const portfolioWeight = totalPortfolioValue > 0
+        ? (currentValue / totalPortfolioValue) * 100
+        : 0;
+      const portfolioWeightLabel = formatPercent(portfolioWeight);
       const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const normalizedLocation = location.toLowerCase();
+      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
+      const portfolioWeightHtml = isBrokerage
+        ? `<span class="portfolio-location-card__weight">PESO: ${escapeHtml(portfolioWeightLabel)}</span>`
+        : '';
+      const brokerLogo = isBrokerage
+        ? `<span class="portfolio-location-card__logo"><img src="${import.meta.env.BASE_URL}logos/holdings/${normalizedLocation}.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" /></span>`
+        : '';
+      const countBadge = isBrokerage
+        ? `<span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>`
+        : '';
 
       return `
         <section class="card portfolio-location-card" aria-labelledby="portfolio-location-${escapeHtml(locationId)}">
-          <header class="portfolio-location-card__header">
-            <h3
-              class="dashboard__section-title portfolio-location-card__title"
-              id="portfolio-location-${escapeHtml(locationId)}">
-              ${escapeHtml(location)}
-            </h3>
-            <div class="portfolio-location-card__performance ${gainClass}">
-              <strong>${escapeHtml(formatPercent(performance))}</strong>
-              <span>(${escapeHtml(amountLabel)})</span>
+          <header class="portfolio-location-card__header holding-row">
+            <div class="portfolio-location-card__identity">
+              ${brokerLogo}
+              <div class="portfolio-location-card__name">
+                <div class="portfolio-location-card__title-line">
+                  <h3
+                    class="dashboard__section-title portfolio-location-card__title"
+                    id="portfolio-location-${escapeHtml(locationId)}">
+                    ${escapeHtml(location)}
+                  </h3>
+                  ${countBadge}
+                </div>
+                ${portfolioWeightHtml}
+              </div>
+            </div>
+            <div class="portfolio-location-card__numbers">
+              <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
+              <div class="portfolio-location-card__performance">
+                <span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span>
+                <span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>
+              </div>
             </div>
           </header>
           <div class="portfolio-location-card__holdings">

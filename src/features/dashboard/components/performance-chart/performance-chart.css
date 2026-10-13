@@ -93,6 +93,7 @@
     transform 140ms ease;
 }
 
+.performance-chart__point--last::before,
 .performance-chart__point:hover::before,
 .performance-chart__point:focus-visible::before,
 .performance-chart__point:active::before,
