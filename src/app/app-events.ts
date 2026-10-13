@@ -454,6 +454,14 @@ export function initializeAppEvents(
     }
   });
 
+  app.addEventListener("input", (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLTextAreaElement) || target.name !== "notes") return;
+    const form = target.closest<HTMLFormElement>("#movement-form");
+    const counter = form?.querySelector<HTMLElement>("[data-notes-counter]");
+    if (counter) counter.textContent = `${String(target.value.length).padStart(2, "0")}/30`;
+  });
+
   app.addEventListener("change", (event: Event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement) || target.name !== "category") return;
