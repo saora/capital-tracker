@@ -104,7 +104,6 @@ export function renderPortfolioTemplate(
     })
     .join('');
 
-  const totalGainLabel = `${viewModel.totalPerformanceLabel} (${viewModel.totalGainAmountLabel})`;
 
   return `
     <section class="dashboard">
@@ -125,8 +124,10 @@ export function renderPortfolioTemplate(
         </p>
         <div class="portfolio-summary-card__performance">
           <span class="portfolio-summary-card__label">Ganancia total</span>
-          <strong class="${viewModel.totalGainClass}">
-            ${escapeHtml(totalGainLabel)}
+          <strong class="${viewModel.totalGainClass} portfolio-summary-card__gain">
+            <span class="portfolio-summary-card__gain-percent">${escapeHtml(viewModel.totalPerformanceLabel)}</span>
+            <span aria-hidden="true">·</span>
+            <span>${escapeHtml(viewModel.totalGainAmountLabel)}</span>
           </strong>
         </div>
       </section>
