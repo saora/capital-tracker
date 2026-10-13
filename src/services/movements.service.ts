@@ -51,6 +51,8 @@ export interface Movement {
   amount: number;
   concept: string;
   notes: string;
+  quantity?: number;
+  averageCost?: number;
   currency: Currency;
 }
 
@@ -109,7 +111,7 @@ function parseSheetDate(value: unknown): string {
 }
 
 export async function getMovements(token: string): Promise<Movement[]> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:H`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:J`));
   url.searchParams.set("majorDimension", "ROWS");
   url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
@@ -130,6 +132,8 @@ export async function getMovements(token: string): Promise<Movement[]> {
       amount: parseAmount(row[5]),
       concept: String(row[6] ?? "").trim(),
       notes: String(row[7] ?? "").trim(),
+      quantity: row[8] === undefined || row[8] === "" ? undefined : parseAmount(row[8]),
+      averageCost: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
       currency: "MXN" as Currency,
     };
   }).filter((movement) => movement.id && movement.date && movement.account)
@@ -140,7 +144,7 @@ export async function appendMovement(
   token: string,
   movement: Omit<Movement, "currency">,
 ): Promise<void> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:H`) + ":append");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:J`) + ":append");
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   url.searchParams.set("insertDataOption", "INSERT_ROWS");
 
@@ -157,6 +161,8 @@ export async function appendMovement(
         movement.amount,
         movement.concept,
         movement.notes,
+        movement.quantity ?? "",
+        movement.averageCost ?? "",
       ]],
     }),
   });
