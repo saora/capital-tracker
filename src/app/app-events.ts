@@ -141,13 +141,6 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
   select.value = allowed.includes(current) ? current : (direction === "Entrada" ? "Compra" : "Venta");
 }
 
-function updateInvestmentDirection(form: HTMLFormElement, concept: string): void {
-  const direction = getInvestmentDirection(concept);
-  const radio = form.querySelector<HTMLInputElement>(`input[name="type"][value="${direction}"]`);
-  if (radio) radio.checked = true;
-  updateInvestmentConceptOptions(form, direction, concept);
-}
-
 function updatePurchaseAmount(form: HTMLFormElement): void {
   const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
   const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
@@ -575,12 +568,12 @@ export function initializeAppEvents(
     if (!form) return;
     if (target instanceof HTMLInputElement && target.matches("[data-currency-input]")) {
       const start = target.selectionStart;
-      const cleaned = target.value.replace(/[^0-9.,$\\s]/g, "").replace(/,/g, "");
+      const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\\..*)\\./g, "$1");
       if (cleaned !== target.value) target.value = cleaned;
       if (start !== null) target.setSelectionRange(Math.min(start, target.value.length), Math.min(start, target.value.length));
     }
     if (target.name === "quantity") {
-      target.value = target.value.replace(/\\D/g, "");
+      target.value = target.value.replace(/[^0-9].*$/, "");
       updatePurchaseAmount(form);
     }
     if (target.name === "averageCost") updatePurchaseAmount(form);
