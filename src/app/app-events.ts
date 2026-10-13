@@ -106,13 +106,12 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
   const select = form.querySelector<HTMLSelectElement>('select[name="concept"]');
   if (!select) return;
   const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
-  const bankOptions = Array.from(select.options).filter((option) => option.dataset.movementCategory === "Cuenta bancaria");
 
-  // Rebuild the options instead of relying on option[hidden], which is inconsistently
-  // honored by native select menus in some browsers.
-  select.replaceChildren(...bankOptions);
+  // Rebuild the select with only options valid for the chosen category/direction.
+  // This avoids relying on option[hidden], which native select menus may ignore.
   if (category === "Acciones") {
     const allowed = investmentConcepts.filter((item) => item.direction === direction || item.direction === "all");
+    select.replaceChildren();
     allowed.forEach((item) => {
       const option = document.createElement("option");
       option.value = item.value;
@@ -124,8 +123,15 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
     const current = preferred ?? select.value;
     select.value = allowed.some((item) => item.value === current) ? current : (direction === "Entrada" ? "Compra" : "Venta");
   } else {
-    bankOptions.forEach((option) => { option.hidden = false; });
-    select.value = preferred && bankOptions.some((option) => option.value === preferred) ? preferred : (bankOptions[0]?.value ?? "");
+    select.replaceChildren();
+    [{ value: "Depósito", label: "Depósito" }, { value: "Retiro", label: "Retiro" }].forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      option.dataset.movementCategory = "Cuenta bancaria";
+      select.append(option);
+    });
+    select.value = preferred && ["Depósito", "Retiro"].includes(preferred) ? preferred : "Depósito";
   }
 }
 
