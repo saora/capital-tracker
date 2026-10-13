@@ -102,6 +102,28 @@ function updateMovementSubmitState(form: HTMLFormElement): void {
   submit.disabled = !isValid || !hasChanged;
 }
 
+function getInvestmentDirection(concept: string): "Entrada" | "Salida" {
+  return ["Compra", "Dividendo"].includes(concept) ? "Entrada" : "Salida";
+}
+
+function updateInvestmentDirection(form: HTMLFormElement, concept: string): void {
+  const direction = getInvestmentDirection(concept);
+  const radio = form.querySelector<HTMLInputElement>(`input[name="type"][value="${direction}"]`);
+  if (radio) radio.checked = true;
+}
+
+function updatePurchaseAmount(form: HTMLFormElement): void {
+  const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
+  const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
+  if (category !== "Acciones" || concept !== "Compra") return;
+  const quantity = Number(form.querySelector<HTMLInputElement>('input[name="quantity"]')?.value);
+  const averageCost = Number(form.querySelector<HTMLInputElement>('input[name="averageCost"]')?.value);
+  const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
+  if (!amountInput || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(averageCost) || averageCost <= 0) return;
+  amountInput.value = (quantity * averageCost).toFixed(2);
+  amountInput.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function updateInvestmentFields(form: HTMLFormElement, category: string, concept: string): void {
   const isInvestment = category === "Acciones";
   form.querySelectorAll<HTMLElement>("[data-field-concept]").forEach((field) => {
@@ -343,6 +365,8 @@ export function initializeAppEvents(
       }
       if (amountInput) amountInput.value = String(movement.amount);
       if (notesInput) notesInput.value = movement.notes;
+      const directionRadio = form.querySelector<HTMLInputElement>(`input[name="type"][value="${movement.type}"]`);
+      if (directionRadio) directionRadio.checked = true;
       const quantity = form.querySelector<HTMLInputElement>('input[name="quantity"]');
       const average = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
       const needsQuantity = movement.category === "Acciones" && ["Compra", "Venta"].includes(movement.concept);
@@ -510,7 +534,9 @@ export function initializeAppEvents(
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
     const form = target.closest<HTMLFormElement>("#movement-form");
-    if (form) updateMovementSubmitState(form);
+    if (!form) return;
+    if (target.name === "quantity" || target.name === "averageCost") updatePurchaseAmount(form);
+    updateMovementSubmitState(form);
   });
 
   app.addEventListener("change", (event: Event) => {
@@ -551,6 +577,8 @@ export function initializeAppEvents(
     });
     if (conceptSelect) conceptSelect.value = category === "Acciones" ? "Compra" : "Depósito";
     updateInvestmentFields(form, category, conceptSelect?.value ?? "");
+    if (category === "Acciones") updateInvestmentDirection(form, conceptSelect?.value ?? "");
+    updateMovementSubmitState(form);
   });
 
   app.addEventListener("change", (event: Event) => {
@@ -560,6 +588,9 @@ export function initializeAppEvents(
     if (!form) return;
     const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria";
     updateInvestmentFields(form, category, target.value);
+    if (category === "Acciones") updateInvestmentDirection(form, target.value);
+    updatePurchaseAmount(form);
+    updateMovementSubmitState(form);
   });
 
   app.addEventListener("change", (event: Event) => {
@@ -612,9 +643,10 @@ export function initializeAppEvents(
     const averageCost = averageCostRaw ? Number(averageCostRaw) : undefined;
     const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept);
     const isBuy = category === "Acciones" && concept === "Compra";
+    const selectedType = String(formData.get("type") ?? "");
     const type = category === "Cuenta bancaria"
       ? (concept === "Depósito" ? "Entrada" : "Salida")
-      : (["Venta", "Dividendo"].includes(concept) ? "Entrada" : "Salida");
+      : (selectedType === "Entrada" || selectedType === "Salida" ? selectedType : getInvestmentDirection(concept));
 
     if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 ||
       (isTrade && (quantity === undefined || !Number.isFinite(quantity) || quantity <= 0)) ||
