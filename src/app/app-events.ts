@@ -272,7 +272,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
       card.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento"; form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios"; form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
       form.dataset.originalValues = getMovementFormValues(form); updateMovementSubmitState(form);
       const status = form.querySelector<HTMLElement>("#movement-form-status"); if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
-      card.hidden = false; if (add) add.hidden = true; const history = app.querySelector<HTMLElement>("#movement-history-section"); if (history) history.hidden = true; card.scrollIntoView({ behavior: "smooth", block: "start" }); dateInput?.focus({ preventScroll: true }); return;
+      card.hidden = false; if (add) add.hidden = true; const history = app.querySelector<HTMLElement>("#movement-history-section"); if (history) history.hidden = true; card.scrollIntoView({ behavior: "smooth", block: "start" }); return;
     }
     const deleteButton = target.closest<HTMLButtonElement>("[data-movement-delete]");
     if (deleteButton) {
