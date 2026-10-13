@@ -231,8 +231,11 @@ export function renderTransactions(
       </dialog>
 
       <div class="movement-success-toast" id="movement-success-toast" role="status" aria-live="polite" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-7"/></svg>
-        <span id="movement-success-message"></span>
+        <svg class="movement-success-toast__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-7"/></svg>
+        <span class="movement-success-toast__message" id="movement-success-message"></span>
+        <button type="button" class="movement-success-toast__close" data-movement-success-close aria-label="Cerrar mensaje de confirmación" title="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
       </div>
 
       <section class="dashboard__section" id="movement-history-section">
