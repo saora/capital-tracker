@@ -290,11 +290,31 @@ export async function getInvestmentSheetsData(
     0,
   );
 
+  // Calculate the total portfolio's daily percentage change using each
+  // variable-income position's market value as its weight. Positions without
+  // a valid daily quote (including fixed income) contribute no daily change.
+  const dailyChangeAmount = variableIncome.reduce((total, item) => {
+    const dailyChangePercent = item.investment.dailyChangePercent;
+
+    if (
+      typeof dailyChangePercent !== "number" ||
+      !Number.isFinite(dailyChangePercent)
+    ) {
+      return total;
+    }
+
+    return total + item.currentValue * (dailyChangePercent / 100);
+  }, 0);
+
+  const dailyChange = totalValue > 0
+    ? (dailyChangeAmount / totalValue) * 100
+    : 0;
+
   const summary: PortfolioSummary = {
     invested,
     totalValue,
     totalGain: totalValue - invested,
-    dailyChange: 0,
+    dailyChange,
     currency: "MXN",
   };
 
