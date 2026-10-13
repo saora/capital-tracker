@@ -333,7 +333,7 @@ export function initializeAppEvents(
 
     void (async () => {
       try {
-        await appendMovement(token, {
+        const savedMovement = {
           id: crypto.randomUUID(),
           date,
           type,
@@ -342,8 +342,16 @@ export function initializeAppEvents(
           amount,
           concept,
           notes,
-        });
-        appState.movements = await getMovements(token);
+          currency: "MXN" as const,
+        };
+        await appendMovement(token, savedMovement);
+        appState.movements = [savedMovement, ...appState.movements]
+          .sort((a, b) => b.date.localeCompare(a.date));
+        try {
+          appState.movements = await getMovements(token);
+        } catch {
+          // El append ya fue confirmado; conserva el registro local en pantalla.
+        }
         renderPage(app);
         const successStatus = app.querySelector<HTMLElement>("#movement-form-status");
         if (successStatus) {
