@@ -156,8 +156,7 @@ export function renderTransactions(
             <span>Cuenta bancaria</span>
             <select name="account" id="movement-account" required>
               <option value="">Selecciona una cuenta</option>
-              <optgroup label="Cuentas bancarias" data-account-category="Cuenta bancaria">${bankOptions || '<option value="" disabled>No hay cuentas de tipo Banco en Catalogo</option>'}</optgroup>
-              <optgroup label="Acciones, ETF y Crypto" data-account-category="Acciones" hidden>${assetOptions || '<option value="" disabled>No hay activos elegibles en Catalogo</option>'}</optgroup>
+              ${bankOptions || '<option value="" disabled>No hay cuentas de tipo Banco en Catalogo</option>'}
             </select>
           </label>
 
@@ -188,7 +187,7 @@ export function renderTransactions(
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
-            <span>Costo promedio por título (MXN)</span>
+            <span>Costo promedio</span>
             <input name="averageCost" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0.00" disabled />
           </label>
 
