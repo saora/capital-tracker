@@ -61,24 +61,12 @@ function renderHolding(investment: Investment): string {
 export function presentHoldingsList({
   investments,
   limit,
-  category = "stocks",
 }: HoldingsListData): string {
-  const isBankAccountsCategory = category === "bank-accounts";
-
-  const filteredInvestments = investments.filter((investment) => {
-    if (isBankAccountsCategory) {
-      return (
-        investment.assetType === "fixed-income" ||
-        investment.assetType === "bank-account"
-      );
-    }
-
-    return (
-      investment.assetType === "stock" ||
-      investment.assetType === "etf" ||
-      investment.assetType === "crypto"
-    );
-  });
+  const filteredInvestments = investments.filter(
+    (investment) =>
+      investment.assetType === "fixed-income" ||
+      investment.assetType === "bank-account",
+  );
 
   const visibleInvestments =
     limit === undefined
@@ -103,43 +91,14 @@ export function presentHoldingsList({
     `)
     .join("");
 
-  const emptyMessage = isBankAccountsCategory
-    ? "No hay cuentas bancarias registradas."
-    : "No hay acciones ni ETFs registrados.";
+  const emptyMessage = "No hay cuentas bancarias registradas.";
 
   return `
     <section class="holdings-section">
      
 
-      <div
-        class="holdings-toggle"
-        role="group"
-        aria-label="Categoría de posiciones">
-        <button
-          type="button"
-          class="holdings-toggle__option${
-            category === "stocks" ? " holdings-toggle__option--active" : ""
-          }"
-          data-holdings-category="stocks"
-          aria-pressed="${category === "stocks"}">
-          <span class="holdings-toggle__icon" aria-hidden="true">↗</span>
-          <span>Acciones</span>
-        </button>
-
-        <button
-          type="button"
-          class="holdings-toggle__option${
-            isBankAccountsCategory ? " holdings-toggle__option--active" : ""
-          }"
-          data-holdings-category="bank-accounts"
-          aria-pressed="${isBankAccountsCategory}">
-          <span class="holdings-toggle__icon" aria-hidden="true">▤</span>
-          <span>Cuentas bancarias</span>
-        </button>
-      </div>
-
-       <div class="section-heading">
-        <h2>Mis posiciones</h2>
+      <div class="section-heading">
+        <h2>Cuentas bancarias</h2>
         <span class="section-count">${visibleInvestments.length}</span>
       </div>
 
