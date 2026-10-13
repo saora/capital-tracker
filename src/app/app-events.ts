@@ -267,7 +267,7 @@ export function initializeAppEvents(
       const row = expandMovement.closest<HTMLElement>("[data-movement-row]");
       const detail = row?.querySelector<HTMLElement>("[data-movement-detail]");
       if (row && detail) {
-        const opening = !detail.hidden;
+        const opening = detail.hidden === true;
         detail.hidden = !opening;
         row.classList.toggle("is-expanded", opening);
         expandMovement.setAttribute("aria-expanded", String(opening));
