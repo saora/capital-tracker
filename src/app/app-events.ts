@@ -298,7 +298,19 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
     if (movementPeriodElement) { const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined; if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) { appState.movementPeriod = period; renderPage(app); } return; }
     const routeElement = target.closest<HTMLElement>("[data-route]");
-    if (routeElement) { const route = routeElement.dataset.route as AppRoute | undefined; if (route && validRoutes.includes(route) && route !== appState.activeRoute) { appState.activeRoute = route; renderPage(app); } }
+    if (routeElement) {
+      const route = routeElement.dataset.route as AppRoute | undefined;
+      if (route && validRoutes.includes(route) && route !== appState.activeRoute) {
+        appState.activeRoute = route;
+        renderPage(app);
+
+        // Refresh the spreadsheet whenever the user opens either portfolio view.
+        // Render first so navigation stays responsive while data loads in the background.
+        if (route === "dashboard" || route === "portfolio") {
+          void connectGoogleSheets(app);
+        }
+      }
+    }
   });
 
   app.addEventListener("pointermove", (event: PointerEvent) => {
