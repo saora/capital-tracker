@@ -118,7 +118,7 @@ export async function getMovements(token: string): Promise<Movement[]> {
   const result = await sheetsRequest<{ values?: SheetRow[] }>(token, url.toString());
   const rows = result.values ?? [];
 
-  return rows.slice(1).map((row) => {
+  return rows.slice(1).map((row): Movement => {
     const categoryText = String(row[4] ?? "").trim().toLocaleLowerCase("es-MX");
     const typeText = String(row[2] ?? "").trim().toLocaleLowerCase("es-MX");
     return {
