@@ -20,6 +20,12 @@ const SYMBOLS = {
   MSFT: ['MSFT'],
   GOOG: ['GOOG', 'GOOGL'],
   NVDA: ['NVDA'],
+  MU: ['MU'],
+  AAPL: ['AAPL'],
+  AMZN: ['AMZN'],
+  VST: ['VST'],
+  AVGO: ['AVGO'],
+  TSLA: ['TSLA'],
   WALMEX: ['WALMEX.MX'],
   IVVPESOISHRS: ['IVVPESOISHRS.MX', 'IVVPESOISHRS'],
 };
