@@ -128,9 +128,60 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
       }
 
       return {
+        investment: makeInvestment(
+          `fixed-\${index}-\${platform}`,
+          platform.toUpperCase(),
+          platform,
+          "fixed-income",
+          invested,
+          currentValue,
+        ),
+        invested,
+        currentValue,
+      };
+    })
+    .filter((item): item is ParsedInvestment => item !== null);
+}
+
+function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
+  const activeAssets = new Map<string, string>();
+
+  rows.forEach((row) => {
+    const symbol = normalize(row[0]);
+    const location = String(row[1] ?? "").trim();
+    const status = normalize(row[2]);
+
+    if (symbol && status === "activo") {
+      activeAssets.set(symbol, location || "Sin ubicación");
+    }
+  });
+
+  return activeAssets;
+}
+
+function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
+  // A12:N27 contains the header followed by the current positions.
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const symbol = String(row[0] ?? "").trim();
+      const invested = toNumber(row[9]);
+      const currentValue = toNumber(row[10]);
+      const quantity = toNumber(row[7]);
+      const dailyChangePercent = toNumber(row[4]) * 100;
+
+      if (
+        !symbol ||
+        ["total", "total general", "subtotal"].includes(normalize(symbol)) ||
+        (invested === 0 && currentValue === 0)
+      ) {
+        return null;
+      }
+
+      return {
         investment: {
           ...makeInvestment(
-            `variable-${index}-${symbol}`,
+            `variable-\${index}-\${symbol}`,
             symbol.toUpperCase(),
             symbol.toUpperCase(),
             getAssetType(symbol),
