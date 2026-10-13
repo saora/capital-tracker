@@ -94,10 +94,21 @@ export function initializeApp(app: HTMLDivElement): void {
 
   renderPage(app);
 
-  // Conserva la sesión existente y carga los datos si ya hay token.
+  // Conserva la sesión existente y carga los datos cada vez que arranca la app.
   if (getSessionAccessToken()) {
     void connectGoogleSheets(app);
   }
+
+  // Refresh when the user returns to the app/tab after leaving it in the background.
+  document.addEventListener('visibilitychange', () => {
+    if (
+      document.visibilityState === 'visible' &&
+      getSessionAccessToken() &&
+      !appState.isConnecting
+    ) {
+      void connectGoogleSheets(app);
+    }
+  });
 }
 
 export { closeAccountMenu };
