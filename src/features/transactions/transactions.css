@@ -10,6 +10,28 @@
   line-height: 1.45;
 }
 .movement-form-card { min-width: 0; }
+
+.movement-add-wrap { display: flex; justify-content: center; }
+.movement-add-button {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-on-brand, #fff);
+  background: var(--color-brand-700);
+  box-shadow: var(--shadow-md, 0 3px 10px rgb(0 0 0 / 12%));
+  cursor: pointer;
+  transition: transform .15s ease, background-color .15s ease;
+}
+.movement-add-button span { font-size: 2rem; font-weight: 400; line-height: 1; transform: translateY(-1px); }
+.movement-add-button:hover { transform: scale(1.05); }
+.movement-add-button:focus-visible { outline: 3px solid var(--color-brand-500); outline-offset: 3px; }
+.movement-add-button[hidden] { display: none; }
+.movement-form-card[hidden] { display: none; }
+
 .movement-sheet-badge {
   color: var(--color-text-secondary);
   font-size: .7rem;
