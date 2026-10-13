@@ -167,3 +167,25 @@ export async function appendMovement(
     }),
   });
 }
+
+
+async function findMovementRow(token: string, id: string): Promise<number> {
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:A`));
+  url.searchParams.set("majorDimension", "ROWS");
+  url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
+  const result = await sheetsRequest<{ values?: SheetRow[] }>(token, url.toString());
+  const index = (result.values ?? []).findIndex((row, i) => i > 0 && String(row[0] ?? "") === id);
+  if (index < 1) throw new Error("No se encontró el movimiento en Google Sheets.");
+  return index + 1;
+}
+export async function updateMovement(token: string, movement: Omit<Movement, "currency">): Promise<void> {
+  const row = await findMovementRow(token, movement.id);
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:J${row}`));
+  url.searchParams.set("valueInputOption", "USER_ENTERED");
+  await sheetsRequest(token, url.toString(), { method: "PUT", body: JSON.stringify({ majorDimension: "ROWS", values: [[movement.id, movement.date, movement.type, movement.account, movement.category, movement.amount, movement.concept, movement.notes, movement.quantity ?? "", movement.averageCost ?? ""]] }) });
+}
+export async function deleteMovement(token: string, id: string): Promise<void> {
+  const row = await findMovementRow(token, id);
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:J${row}`) + ":clear");
+  await sheetsRequest(token, url.toString(), { method: "POST", body: JSON.stringify({}) });
+}
