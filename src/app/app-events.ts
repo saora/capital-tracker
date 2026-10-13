@@ -83,13 +83,21 @@ function parseNumericInput(value: string): number {
   return Number(normalized);
 }
 
+function getMovementCurrency(form: HTMLFormElement): "MXN" | "USD" {
+  const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
+  const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
+  if (category === "Acciones" && ["Compra", "Venta"].includes(concept ?? "")) {
+    return form.querySelector<HTMLSelectElement>('select[name="currency"]')?.value === "USD" ? "USD" : "MXN";
+  }
+  return "MXN";
+}
+
 function formatCurrencyInput(input: HTMLInputElement): void {
   const value = parseNumericInput(input.value);
-  if (!Number.isFinite(value)) {
-    input.value = "";
-    return;
-  }
-  input.value = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  if (!Number.isFinite(value)) { input.value = ""; return; }
+  const form = input.closest<HTMLFormElement>("#movement-form");
+  const currency = form ? getMovementCurrency(form) : "MXN";
+  input.value = new Intl.NumberFormat("es-MX", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
 const investmentConcepts = [
@@ -133,17 +141,31 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
   }
 }
 
+function updateTradeTotal(form: HTMLFormElement): void {
+  const amount = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="amount"]')?.value ?? "");
+  const commission = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="commission"]')?.value ?? "0");
+  const totalInput = form.querySelector<HTMLInputElement>('input[name="total"]');
+  if (!totalInput) return;
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const safeCommission = Number.isFinite(commission) ? commission : 0;
+  totalInput.value = safeAmount > 0 || safeCommission > 0
+    ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(safeAmount + safeCommission)
+    : "";
+}
+
 function updatePurchaseAmount(form: HTMLFormElement): void {
   const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value;
   const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
-  if (category !== "Acciones" || concept !== "Compra") return;
-  const quantity = Number(form.querySelector<HTMLInputElement>('input[name="quantity"]')?.value);
-  const averageInput = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
-  const averageCost = averageInput ? parseNumericInput(averageInput.value) : Number.NaN;
-  const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
-  if (!amountInput || !Number.isInteger(quantity) || quantity <= 0 || !Number.isFinite(averageCost) || averageCost <= 0) return;
-  amountInput.value = (quantity * averageCost).toFixed(2);
-  amountInput.dispatchEvent(new Event("input", { bubbles: true }));
+  if (category === "Acciones" && concept === "Compra") {
+    const quantity = Number(form.querySelector<HTMLInputElement>('input[name="quantity"]')?.value);
+    const averageInput = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
+    const averageCost = averageInput ? parseNumericInput(averageInput.value) : Number.NaN;
+    const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
+    if (amountInput && Number.isInteger(quantity) && quantity > 0 && Number.isFinite(averageCost) && averageCost > 0) {
+      amountInput.value = (quantity * averageCost).toFixed(2);
+    }
+  }
+  updateTradeTotal(form);
 }
 
 function updateInvestmentFields(form: HTMLFormElement, category: string, concept: string): void {
@@ -152,12 +174,13 @@ function updateInvestmentFields(form: HTMLFormElement, category: string, concept
     const concepts = (field.dataset.fieldConcept ?? "").split(",");
     const visible = isInvestment && concepts.includes(concept);
     field.hidden = !visible;
-    field.querySelectorAll<HTMLInputElement>("input").forEach((input) => {
+    field.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea").forEach((input) => {
       input.disabled = !visible;
-      input.required = visible;
-      if (!visible) input.value = "";
+      input.required = visible && !["total", "commission", "currency"].includes(input.name);
+      if (!visible) input.value = input.name === "currency" ? "MXN" : "";
     });
   });
+  updateTradeTotal(form);
 }
 
 export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandlers): void {
@@ -271,10 +294,20 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
         accountSelect.value = movement.account; accountSelect.disabled = false; accountSelect.required = true;
       }
       if (amountInput) amountInput.value = String(movement.amount); if (notesInput) notesInput.value = movement.notes;
+      const commissionInput = form.querySelector<HTMLInputElement>('input[name="commission"]');
+      const currencySelect = form.querySelector<HTMLSelectElement>('select[name="currency"]');
+      if (commissionInput) commissionInput.value = movement.commission === undefined ? "" : String(movement.commission);
+      if (currencySelect) currencySelect.value = movement.currency === "USD" ? "USD" : "MXN";
       const quantity = form.querySelector<HTMLInputElement>('input[name="quantity"]'); const average = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
       const needsQuantity = movement.category === "Acciones" && ["Compra", "Venta"].includes(movement.concept); const needsAverage = movement.category === "Acciones" && movement.concept === "Compra";
       if (quantity) { quantity.value = movement.quantity === undefined ? "" : String(movement.quantity); quantity.disabled = !needsQuantity; quantity.required = needsQuantity; quantity.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsQuantity; }
       if (average) { average.value = movement.averageCost === undefined ? "" : String(movement.averageCost); average.disabled = !needsAverage; average.required = needsAverage; average.closest<HTMLElement>("[data-field-concept]")!.hidden = !needsAverage; }
+      const needsTradeFields = movement.category === "Acciones" && ["Compra", "Venta"].includes(movement.concept);
+      form.querySelectorAll<HTMLElement>('[data-field-concept="Compra,Venta"]').forEach((field) => {
+        field.hidden = !needsTradeFields;
+        field.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select").forEach((input) => { input.disabled = !needsTradeFields; });
+      });
+      updateTradeTotal(form);
       card.querySelector<HTMLElement>("#movement-form-title")!.textContent = "Editar movimiento"; form.querySelector<HTMLButtonElement>('button[type="submit"]')!.textContent = "Guardar cambios"; form.querySelector<HTMLButtonElement>("[data-movement-cancel]")!.hidden = false;
       form.dataset.originalValues = getMovementFormValues(form); updateMovementSubmitState(form);
       const status = form.querySelector<HTMLElement>("#movement-form-status"); if (status) { status.textContent = ""; status.className = "movement-form__status movement-field--full"; }
@@ -327,7 +360,10 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
   app.addEventListener("input", (event: Event) => {
     const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return; const form = target.closest<HTMLFormElement>("#movement-form"); if (!form) return;
     if (target instanceof HTMLInputElement && target.matches("[data-currency-input]")) { const start = target.selectionStart; const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); if (cleaned !== target.value) target.value = cleaned; if (start !== null) target.setSelectionRange(Math.min(start, target.value.length), Math.min(start, target.value.length)); }
-    if (target.name === "quantity") { target.value = target.value.replace(/[^0-9].*$/, ""); updatePurchaseAmount(form); } if (target.name === "averageCost") updatePurchaseAmount(form); updateMovementSubmitState(form);
+    if (target.name === "quantity") { target.value = target.value.replace(/[^0-9].*$/, ""); updatePurchaseAmount(form); }
+    if (target.name === "averageCost") updatePurchaseAmount(form);
+    if (target.name === "amount" || target.name === "commission") updateTradeTotal(form);
+    updateMovementSubmitState(form);
   });
   app.addEventListener("change", (event: Event) => {
     const target = event.target; if (!(target instanceof HTMLInputElement) || target.name !== "category") return; const form = target.closest<HTMLFormElement>("#movement-form"); if (!form) return; const category = target.value;
@@ -344,7 +380,19 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     updateInvestmentFields(form, category, conceptSelect?.value ?? ""); updateMovementSubmitState(form);
   });
   app.addEventListener("change", (event: Event) => {
-    const target = event.target; if (!(target instanceof HTMLSelectElement) || target.name !== "concept") return; const form = target.closest<HTMLFormElement>("#movement-form"); if (!form) return; const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria"; updateInvestmentFields(form, category, target.value); updatePurchaseAmount(form); updateMovementSubmitState(form);
+    const target = event.target; if (!(target instanceof HTMLSelectElement)) return;
+    const form = target.closest<HTMLFormElement>("#movement-form"); if (!form) return;
+    if (target.name === "concept") {
+      const category = form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value ?? "Cuenta bancaria";
+      updateInvestmentFields(form, category, target.value); updatePurchaseAmount(form);
+    } else if (target.name === "currency") {
+      form.querySelectorAll<HTMLInputElement>('input[name="amount"], input[name="commission"]').forEach((input) => {
+        const value = parseNumericInput(input.value);
+        if (Number.isFinite(value)) input.value = String(value);
+      });
+      updateTradeTotal(form);
+    } else return;
+    updateMovementSubmitState(form);
   });
   app.addEventListener("change", (event: Event) => {
     const target = event.target; if (!(target instanceof HTMLInputElement) || target.name !== "type") return; const form = target.closest<HTMLFormElement>("#movement-form"); if (!form || form.querySelector<HTMLInputElement>('input[name="category"]:checked')?.value !== "Acciones") return;
@@ -361,15 +409,15 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     }
     delete target.dataset.confirmedSave;
     const token = getSessionAccessToken(); const status = target.querySelector<HTMLElement>("#movement-form-status"); const submitButton = target.querySelector<HTMLButtonElement>('button[type="submit"]'); const formData = new FormData(target);
-    const date = String(formData.get("date") ?? "").trim(); const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones"; const concept = String(formData.get("concept") ?? "").trim(); const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account"); const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset"); const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? ""; const amount = parseNumericInput(String(formData.get("amount") ?? "")); const notes = String(formData.get("notes") ?? "").trim(); const quantityRaw = String(formData.get("quantity") ?? "").trim(); const averageCostRaw = String(formData.get("averageCost") ?? "").trim(); const quantity = quantityRaw ? Number(quantityRaw) : undefined; const averageCostParsed = averageCostRaw ? parseNumericInput(averageCostRaw) : Number.NaN; const averageCost = averageCostRaw && Number.isFinite(averageCostParsed) ? averageCostParsed : undefined; const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept); const isBuy = category === "Acciones" && concept === "Compra"; const selectedType = String(formData.get("type") ?? "");
+    const date = String(formData.get("date") ?? "").trim(); const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones"; const concept = String(formData.get("concept") ?? "").trim(); const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account"); const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset"); const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? ""; const amount = parseNumericInput(String(formData.get("amount") ?? "")); const commissionRaw = String(formData.get("commission") ?? "").trim(); const commissionParsed = commissionRaw ? parseNumericInput(commissionRaw) : 0; const commission = Number.isFinite(commissionParsed) ? commissionParsed : Number.NaN; const currencyRaw = String(formData.get("currency") ?? "MXN"); const currency = (currencyRaw === "USD" ? "USD" : "MXN") as "MXN" | "USD"; const notes = String(formData.get("notes") ?? "").trim(); const quantityRaw = String(formData.get("quantity") ?? "").trim(); const averageCostRaw = String(formData.get("averageCost") ?? "").trim(); const quantity = quantityRaw ? Number(quantityRaw) : undefined; const averageCostParsed = averageCostRaw ? parseNumericInput(averageCostRaw) : Number.NaN; const averageCost = averageCostRaw && Number.isFinite(averageCostParsed) ? averageCostParsed : undefined; const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept); const isBuy = category === "Acciones" && concept === "Compra"; const selectedType = String(formData.get("type") ?? "");
     const type = category === "Cuenta bancaria" ? (concept === "Depósito" ? "Entrada" : "Salida") : (selectedType === "Entrada" || selectedType === "Salida" ? selectedType : getInvestmentDirection(concept));
-    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 || (isTrade && (quantity === undefined || !Number.isInteger(quantity) || quantity <= 0)) || (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0))) {
+    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 || (isTrade && (!Number.isFinite(commission) || commission < 0)) || (isTrade && (quantity === undefined || !Number.isInteger(quantity) || quantity <= 0)) || (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0))) {
       if (status) { status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y los importes requeridos."; status.className = "movement-form__status movement-field--full is-error"; } return;
     }
     target.dataset.submitting = "true"; if (submitButton) submitButton.disabled = true; if (status) { status.textContent = "Guardando en Google Sheets…"; status.className = "movement-form__status movement-field--full"; }
     void (async () => {
       try {
-        const editId = target.dataset.editId; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}), currency: "MXN" as const };
+        const editId = target.dataset.editId; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade ? { commission, currency } : { currency: "MXN" as const }), ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}) };
         if (editId) { await updateMovement(token, savedMovement); appState.movements = appState.movements.map((item) => item.id === editId ? savedMovement : item).sort((a, b) => b.date.localeCompare(a.date)); }
         else { await appendMovement(token, savedMovement); appState.movements = [savedMovement, ...appState.movements].sort((a, b) => b.date.localeCompare(a.date)); }
         try { appState.movements = await getMovements(token); } catch { /* append already confirmed; keep local record */ }
