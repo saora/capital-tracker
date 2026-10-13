@@ -112,6 +112,7 @@
 .movement-row__facts span { color:var(--color-text-secondary); font-size:.68rem; }
 .movement-row__facts strong { font-size:.78rem; font-weight:600; overflow-wrap:anywhere; }
 .movement-row__note { grid-column:1/-1; }
+.movement-row__facts .movement-row__amount { display:block; width:100%; text-align:left; }
 .movement-row__actions { display:flex; justify-content:flex-end; gap:.5rem; padding-top:.75rem; margin-top:.75rem; border-top:1px solid var(--color-border); }
 .movement-icon-button { display:grid; place-items:center; width:2.25rem; height:2.25rem; border:1px solid var(--color-border); border-radius:var(--radius-md); color:var(--color-text-secondary); background:var(--color-surface); cursor:pointer; }
 .movement-icon-button svg { width:1rem; height:1rem; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
@@ -131,3 +132,12 @@
   .movement-row__expanded { padding-left: 2.3rem; }
   .movement-row__facts { grid-template-columns: minmax(0,1fr); }
 }
+
+.movement-confirm-dialog { width:min(26rem,calc(100% - 2rem)); max-width:none; padding:0; color:var(--color-text-primary); background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg,0 18px 60px rgb(0 0 0 / 25%)); }
+.movement-confirm-dialog::backdrop { background:rgb(15 23 42 / 48%); backdrop-filter:blur(2px); }
+.movement-confirm-dialog__content { padding:1.35rem; }
+.movement-confirm-dialog h2 { margin:0 0 .65rem; font-size:1.1rem; }
+.movement-confirm-dialog p { margin:0; color:var(--color-text-secondary); font-size:.9rem; line-height:1.5; }
+.movement-confirm-dialog__actions { display:flex; justify-content:flex-end; gap:.65rem; margin-top:1.25rem; }
+.movement-confirm-dialog__actions .button { min-height:2.6rem; }
+.movement-confirm-dialog__actions [data-movement-delete-confirm] { color:#fff; background:var(--color-danger); border-color:var(--color-danger); }
