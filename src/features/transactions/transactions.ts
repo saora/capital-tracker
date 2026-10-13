@@ -119,7 +119,13 @@ export function renderTransactions(
         </div>
       </header>
 
-      <section class="card movement-form-card">
+      <div class="movement-add-wrap">
+        <button type="button" class="movement-add-button" data-movement-form-toggle aria-label="Agregar movimiento" title="Agregar movimiento">
+          <span aria-hidden="true">+</span>
+        </button>
+      </div>
+
+      <section class="card movement-form-card" id="movement-form-card" hidden>
         <header class="card__header">
           <h2 class="card__title">Registrar movimiento</h2>
           <span class="movement-sheet-badge">Google Sheets</span>
