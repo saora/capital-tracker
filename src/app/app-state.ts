@@ -3,13 +3,11 @@ import type { PerformancePeriod } from '../types/portfolio';
 import type { InvestmentSheetsData } from '../services/google-sheets.service';
 import type { Movement, CatalogAsset } from '../services/movements.service';
 
-export type HoldingsCategory = 'stocks' | 'bank-accounts';
 export type MovementPeriod = '1D' | '1S' | '1M' | '1A';
 
 export interface AppState {
   activeRoute: AppRoute;
   activePeriod: PerformancePeriod;
-  activeHoldingsCategory: HoldingsCategory;
   investmentData: InvestmentSheetsData | null;
   movements: Movement[];
   catalog: CatalogAsset[];
@@ -25,7 +23,6 @@ export interface AppState {
 export const appState: AppState = {
   activeRoute: 'dashboard',
   activePeriod: '1M',
-  activeHoldingsCategory: 'stocks',
   investmentData: null,
   movements: [],
   catalog: [],
@@ -56,7 +53,3 @@ export const validRoutes: AppRoute[] = [
   'session',
 ];
 
-export const validHoldingsCategories: HoldingsCategory[] = [
-  'stocks',
-  'bank-accounts',
-];
