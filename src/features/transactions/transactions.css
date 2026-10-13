@@ -68,6 +68,18 @@
   font-weight: 450;
 }
 .movement-field textarea { resize: vertical; }
+.movement-notes-control { position: relative; display: block; min-width: 0; }
+.movement-notes-control textarea { display: block; padding-bottom: 1.8rem; }
+.movement-notes-counter {
+  position: absolute;
+  right: .65rem;
+  bottom: .45rem;
+  color: var(--color-text-muted);
+  font-size: .7rem;
+  font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+}
 .movement-field input:focus-visible,
 .movement-field select:focus-visible,
 .movement-field textarea:focus-visible {
