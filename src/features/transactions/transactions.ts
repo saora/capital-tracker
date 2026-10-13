@@ -80,23 +80,32 @@ function renderMovementPeriods(selected: MovementPeriod): string {
 
 function renderMovement(movement: Movement): string {
   const incoming = movement.type === 'Entrada';
-  const categoryLabel = movement.category === 'Acciones' ? 'Inversión' : 'Cuenta bancaria';
   const signedAmount = `${incoming ? '+' : '−'}${formatCurrency(movement.amount, movement.currency)}`;
+  const facts = [
+    `<div><span>Fecha</span><strong>${escapeHtml(formatDate(movement.date))}</strong></div>`,
+    `<div><span>Tipo</span><strong>${escapeHtml(movement.type)}</strong></div>`,
+    `<div><span>Categoría</span><strong>${movement.category === 'Acciones' ? 'Acciones y ETF' : 'Cuenta bancaria'}</strong></div>`,
+    `<div><span>Concepto</span><strong>${escapeHtml(movement.concept || '—')}</strong></div>`,
+    `<div><span>Importe</span><strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong></div>`,
+    ...(movement.quantity !== undefined ? [`<div><span>Número de títulos</span><strong>${escapeHtml(String(movement.quantity))}</strong></div>`] : []),
+    ...(movement.averageCost !== undefined ? [`<div><span>Costo promedio</span><strong>${escapeHtml(formatCurrency(movement.averageCost, movement.currency))}</strong></div>`] : []),
+    ...(movement.notes ? [`<div class="movement-row__note"><span>Notas</span><strong>${escapeHtml(movement.notes)}</strong></div>`] : []),
+  ].join('');
   return `
-    <article class="movement-row">
-      <div class="movement-row__main">
-        <span class="movement-row__type ${incoming ? 'is-incoming' : 'is-outgoing'}">${incoming ? '↙' : '↗'}</span>
-        <div class="movement-row__details">
-          <strong>${escapeHtml(movement.account)} · ${escapeHtml(movement.concept || movement.type)}</strong>
-          <span>${escapeHtml(formatDate(movement.date))} · ${escapeHtml(categoryLabel)} · ${escapeHtml(movement.type)}</span>
-          ${movement.quantity !== undefined ? `<small>Títulos: ${escapeHtml(String(movement.quantity))}</small>` : ''}
-          ${movement.averageCost !== undefined ? `<small>Costo promedio: ${escapeHtml(formatCurrency(movement.averageCost, movement.currency))} por título</small>` : ''}
-          ${movement.notes ? `<small>${escapeHtml(movement.notes)}</small>` : ''}
+    <article class="movement-row" data-movement-row="${escapeHtml(movement.id)}">
+      <button type="button" class="movement-row__summary" data-movement-expand="${escapeHtml(movement.id)}" aria-expanded="false" aria-label="Ver detalle de ${escapeHtml(movement.account)}">
+        <span class="movement-row__type ${incoming ? 'is-incoming' : 'is-outgoing'}" aria-hidden="true">${incoming ? '↙' : '↗'}</span>
+        <span class="movement-row__summary-text"><strong>${escapeHtml(movement.account)} · ${escapeHtml(movement.concept || movement.type)}</strong><small>${escapeHtml(formatDate(movement.date))}</small></span>
+        <strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong><span class="movement-row__chevron" aria-hidden="true">›</span>
+      </button>
+      <section class="movement-row__expanded" data-movement-detail="${escapeHtml(movement.id)}" hidden>
+        <div class="movement-row__facts">${facts}</div>
+        <div class="movement-row__actions">
+          <button type="button" class="movement-icon-button" data-movement-edit="${escapeHtml(movement.id)}" aria-label="Editar movimiento" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
+          <button type="button" class="movement-icon-button movement-icon-button--danger" data-movement-delete="${escapeHtml(movement.id)}" aria-label="Eliminar movimiento" title="Eliminar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5m4-5v5"/></svg></button>
         </div>
-      </div>
-      <strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong>
-    </article>
-  `;
+      </section>
+    </article>`;
 }
 
 export function renderTransactions(
@@ -129,7 +138,7 @@ export function renderTransactions(
 
       <section class="card movement-form-card" id="movement-form-card" hidden>
         <header class="card__header">
-          <h2 class="card__title">Registrar movimiento</h2>
+          <h2 class="card__title" id="movement-form-title">Registrar movimiento</h2>
           <span class="movement-sheet-badge">Google Sheets</span>
         </header>
         <form id="movement-form" class="movement-form">
@@ -202,7 +211,7 @@ export function renderTransactions(
           </label>
 
           <p class="movement-form__hint movement-field--full">El registro se guarda en la pestaña Movimientos y no modifica automáticamente los saldos ni las posiciones.</p>
-          <button class="button button--primary movement-submit movement-field--full" type="submit">Guardar movimiento</button>
+          <div class="movement-form__actions movement-field--full"><button class="button button--primary movement-submit" type="submit">Guardar movimiento</button><button class="button movement-cancel" type="button" data-movement-cancel hidden>Cancelar</button></div>
           <p id="movement-form-status" class="movement-form__status movement-field--full" role="status" aria-live="polite"></p>
         </form>
       </section>
