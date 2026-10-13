@@ -129,7 +129,7 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
 
       return {
         investment: makeInvestment(
-          `fixed-\${index}-\${platform}`,
+          `fixed-${index}-${platform}`,
           platform.toUpperCase(),
           platform,
           "fixed-income",
@@ -181,7 +181,7 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
       return {
         investment: {
           ...makeInvestment(
-            `variable-\${index}-\${symbol}`,
+            `variable-${index}-${symbol}`,
             symbol.toUpperCase(),
             symbol.toUpperCase(),
             getAssetType(symbol),
