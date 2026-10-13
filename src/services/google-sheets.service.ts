@@ -119,7 +119,7 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
     .slice(1)
     .filter((row) => normalize(row[0]) === "renta fija")
-    .map((row, index) => {
+    .map((row, index): ParsedInvestment | null => {
       const platform = String(row[2] ?? "").trim();
       const invested = toNumber(row[3]);
       const currentValue = toNumber(row[4]);
@@ -162,7 +162,7 @@ function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
 
 function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
-    .map((row, index) => {
+    .map((row, index): ParsedInvestment | null => {
       const symbol = String(row[0] ?? "").trim();
       const invested = toNumber(row[9]);
       const currentValue = toNumber(row[10]);
