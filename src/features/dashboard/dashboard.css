@@ -390,14 +390,6 @@
     padding-inline: var(--space-3);
   }
 
-  .holdings-toggle {
-    width: fit-content;
-    min-width: 18rem;
-  }
-
-  .holdings-toggle__option {
-    padding-inline: 0.875rem;
-  }
 }
 
 @media (min-width: 900px) {
@@ -421,8 +413,7 @@
 /* Accesibilidad: respetar la preferencia de movimiento reducido */
 
 @media (prefers-reduced-motion: reduce) {
-  .holding-item,
-  .holdings-toggle__option {
+  .holding-item {
     transition: none;
   }
 }
