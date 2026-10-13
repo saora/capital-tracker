@@ -142,9 +142,12 @@ export function renderTransactions(
           <span class="movement-sheet-badge">Google Sheets</span>
         </header>
         <form id="movement-form" class="movement-form">
-          <label class="movement-field movement-field--full" data-field-category="all">
+          <label class="movement-field movement-date-field" data-field-category="all">
             <span>Fecha del movimiento</span>
-            <input name="date" type="date" required value="${localDateInputValue()}" />
+            <span class="movement-date-control">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M16 3v4M8 3v4M3.5 10h17"/></svg>
+              <input name="date" type="date" required value="${localDateInputValue()}" aria-label="Fecha del movimiento" />
+            </span>
           </label>
 
           <fieldset class="movement-field movement-field--full movement-category-field">
