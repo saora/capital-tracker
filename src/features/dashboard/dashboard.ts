@@ -6,15 +6,12 @@ import { getDashboardData } from './services/dashboard.service';
 import { presentDashboard } from './dashboard.presenter';
 import { renderDashboardTemplate } from './templates/dashboard.template';
 
-export type HoldingsCategory = 'stocks' | 'bank-accounts';
-
 export function renderDashboard(
   period: PerformancePeriod,
   connectedData?: InvestmentSheetsData,
-  holdingsCategory: HoldingsCategory = 'stocks',
 ): string {
   const data = getDashboardData(period, connectedData);
-  const viewModel = presentDashboard(data, holdingsCategory);
+  const viewModel = presentDashboard(data);
 
   return renderDashboardTemplate(viewModel);
 }
