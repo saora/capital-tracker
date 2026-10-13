@@ -107,7 +107,7 @@ function getInvestmentDirection(concept: string): "Entrada" | "Salida" {
 }
 
 function parseNumericInput(value: string): number {
-  const normalized = value.trim().replace(/[$\\s,]/g, "");
+  const normalized = value.trim().replace(/[$\s,]/g, "");
   if (!normalized) return Number.NaN;
   return Number(normalized);
 }
@@ -568,7 +568,7 @@ export function initializeAppEvents(
     if (!form) return;
     if (target instanceof HTMLInputElement && target.matches("[data-currency-input]")) {
       const start = target.selectionStart;
-      const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\\..*)\\./g, "$1");
+      const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
       if (cleaned !== target.value) target.value = cleaned;
       if (start !== null) target.setSelectionRange(Math.min(start, target.value.length), Math.min(start, target.value.length));
     }
