@@ -142,7 +142,7 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
         currentValue,
       };
     })
-    .filter((item): item is ParsedInvestment => item !== null);
+    .filter((item) => item !== null);
 }
 
 function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
@@ -197,7 +197,7 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
         currentValue,
       };
     })
-    .filter((item): item is ParsedInvestment => item !== null);
+    .filter((item) => item !== null);
 }
 
 export async function getInvestmentSheetsData(
