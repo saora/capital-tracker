@@ -131,7 +131,7 @@ export function renderTransactions(
           <span class="movement-sheet-badge">Google Sheets</span>
         </header>
         <form id="movement-form" class="movement-form">
-          <label class="movement-field">
+          <label class="movement-field movement-field--full" data-field-category="all">
             <span>Fecha del movimiento</span>
             <input name="date" type="date" required value="${localDateInputValue()}" />
           </label>
@@ -150,24 +150,24 @@ export function renderTransactions(
             </div>
           </fieldset>
 
-          <label class="movement-field">
-            <span>Tipo de movimiento</span>
-            <select name="type" required>
-              <option value="Entrada">Entrada</option>
-              <option value="Salida">Salida</option>
-            </select>
-          </label>
-
-          <label class="movement-field">
-            <span id="movement-account-label">Cuenta bancaria</span>
+          <label class="movement-field" data-field-category="Cuenta bancaria">
+            <span>Cuenta bancaria</span>
             <select name="account" id="movement-account" required>
-              <option value="">Selecciona una opción</option>
-              <optgroup label="Cuentas bancarias" data-account-category="Cuenta bancaria">${bankOptions || '<option value="" disabled>No hay cuentas registradas</option>'}</optgroup>
-              <optgroup label="Acciones y ETF" data-account-category="Acciones" hidden>${assetOptions || '<option value="" disabled>No hay activos registrados</option>'}</optgroup>
+              <option value="">Selecciona una cuenta</option>
+              <optgroup label="Cuentas bancarias" data-account-category="Cuenta bancaria">${bankOptions || '<option value="" disabled>No hay cuentas de tipo Banco en Catalogo</option>'}</optgroup>
+              <optgroup label="Acciones, ETF y Crypto" data-account-category="Acciones" hidden>${assetOptions || '<option value="" disabled>No hay activos elegibles en Catalogo</option>'}</optgroup>
             </select>
           </label>
 
-          <label class="movement-field">
+          <label class="movement-field" data-field-category="Acciones" hidden>
+            <span>Acción o activo</span>
+            <select name="account" id="movement-asset" disabled>
+              <option value="">Selecciona una acción o activo</option>
+              ${assetOptions || '<option value="" disabled>No hay activos de tipo ETF, Accion o Crypto en Catalogo</option>'}
+            </select>
+          </label>
+
+          <label class="movement-field" data-field-category="all">
             <span>Concepto</span>
             <select name="concept" required>
               <option value="Depósito" data-movement-category="Cuenta bancaria">Depósito</option>
@@ -176,17 +176,26 @@ export function renderTransactions(
               <option value="Venta" data-movement-category="Acciones" hidden>Venta</option>
               <option value="Dividendo" data-movement-category="Acciones" hidden>Dividendo</option>
               <option value="Comisión" data-movement-category="Acciones" hidden>Comisión</option>
-              <option value="Otro" data-movement-category="Cuenta bancaria">Otro</option>
               <option value="Otro" data-movement-category="Acciones" hidden>Otro</option>
             </select>
           </label>
 
-          <label class="movement-field">
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
+            <span>Número de títulos</span>
+            <input name="quantity" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0" disabled />
+          </label>
+
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
+            <span>Costo promedio por título (MXN)</span>
+            <input name="averageCost" type="number" min="0.000001" step="any" inputmode="decimal" placeholder="0.00" disabled />
+          </label>
+
+          <label class="movement-field" data-field-category="all">
             <span>Importe (MXN)</span>
             <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00" required />
           </label>
 
-          <label class="movement-field movement-field--full">
+          <label class="movement-field movement-field--full" data-field-category="all">
             <span>Notas (opcional)</span>
             <textarea name="notes" rows="2" maxlength="500" placeholder="Detalles, referencia o motivo del movimiento"></textarea>
           </label>
