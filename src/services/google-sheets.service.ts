@@ -43,7 +43,7 @@ function toNumber(value: unknown): number {
 
 function parseGainSummaryAmount(value: unknown): number {
   const text = String(value ?? "").trim();
-  const match = text.match(/([+-]?\\d+(?:[.,]\\d+)?%)\\s*\\(?\\s*(-?\\$[\\d,]+(?:\\.\\d{2})?)\\s*\\)?/);
+  const match = text.match(/([+-]?\d+(?:[.,]\d+)?%)\s*\(?\s*(-?\$[\d,]+(?:\.\d{2})?)\s*\)?/);
 
   if (!match) {
     throw new Error(
@@ -52,7 +52,7 @@ function parseGainSummaryAmount(value: unknown): number {
     );
   }
 
-  const amountText = match[2].replace(/[$,\\s]/g, "");
+  const amountText = match[2].replace(/[$,\s]/g, "");
   const amount = Number(amountText);
 
   if (!Number.isFinite(amount)) {
