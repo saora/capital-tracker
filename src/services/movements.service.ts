@@ -163,7 +163,7 @@ export async function appendMovement(
         movement.account,                    // E: Cuenta o Activo
         movement.concept,                    // F: Concepto
         "",                                   // G: Cantidad (not collected separately by the form)
-        movement.currency ?? "MXN",          // H: Moneda
+        "MXN",                               // H: Moneda
         movement.concept === "Compra" || movement.concept === "Venta" ? movement.averageCost ?? "" : "", // I: Precio unitario
         movement.quantity ?? "",             // J: Titulos
         movement.averageCost ?? "",          // K: Costo promedio
