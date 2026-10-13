@@ -120,13 +120,14 @@ export function renderTransactions(
           <label class="movement-field">
             <span>Concepto</span>
             <select name="concept" required>
-              <option value="Depósito">Depósito</option>
-              <option value="Retiro">Retiro</option>
-              <option value="Compra">Compra</option>
-              <option value="Venta">Venta</option>
-              <option value="Dividendo">Dividendo</option>
-              <option value="Comisión">Comisión</option>
-              <option value="Otro">Otro</option>
+              <option value="Depósito" data-movement-category="Cuenta bancaria">Depósito</option>
+              <option value="Retiro" data-movement-category="Cuenta bancaria">Retiro</option>
+              <option value="Compra" data-movement-category="Acciones" hidden>Compra</option>
+              <option value="Venta" data-movement-category="Acciones" hidden>Venta</option>
+              <option value="Dividendo" data-movement-category="Acciones" hidden>Dividendo</option>
+              <option value="Comisión" data-movement-category="Acciones" hidden>Comisión</option>
+              <option value="Otro" data-movement-category="Cuenta bancaria">Otro</option>
+              <option value="Otro" data-movement-category="Acciones" hidden>Otro</option>
             </select>
           </label>
 
