@@ -47,7 +47,13 @@ export function presentDashboard(
 
     holdingsListHtml: renderHoldingsListTemplate(
       presentHoldingsList({
-        investments: data.investments,
+        // Inicio muestra únicamente cuentas bancarias; las acciones, ETF y cripto
+        // se consultan en la pantalla Portfolio.
+        investments: data.investments.filter(
+          (investment) =>
+            investment.assetType === 'fixed-income' ||
+            investment.assetType === 'bank-account',
+        ),
       }),
     ),
 
