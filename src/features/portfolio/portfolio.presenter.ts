@@ -93,8 +93,21 @@ export function presentPortfolio(
     });
 
   positions.sort((a, b) => {
-    const locationOrder = a.location.localeCompare(b.location, "es-MX");
-    if (locationOrder !== 0) return locationOrder;
+    const getLocationOrder = (location: string): number => {
+      const normalized = location.trim().toLocaleLowerCase("es-MX");
+      if (normalized === "gbm") return 0;
+      if (normalized === "bitso") return 1;
+      return 2;
+    };
+
+    const priorityOrder = getLocationOrder(a.location) - getLocationOrder(b.location);
+    if (priorityOrder !== 0) return priorityOrder;
+
+    if (getLocationOrder(a.location) === 2) {
+      const locationOrder = a.location.localeCompare(b.location, "es-MX");
+      if (locationOrder !== 0) return locationOrder;
+    }
+
     return b.gainPercent - a.gainPercent;
   });
 
