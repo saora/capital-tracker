@@ -12,6 +12,7 @@ import { renderPage } from './app-renderer';
 export async function connectGoogleSheets(
   app: HTMLDivElement,
   accessToken?: string,
+  forceRefresh = false,
 ): Promise<void> {
   if (appState.isConnecting) return;
 
@@ -30,6 +31,14 @@ export async function connectGoogleSheets(
   const token = accessToken ?? getSessionAccessToken();
   if (!token) {
     renderPage(app);
+    return;
+  }
+
+  if (
+    !forceRefresh &&
+    appState.lastSuccessfulRefreshAt !== null &&
+    Date.now() - appState.lastSuccessfulRefreshAt < 60_000
+  ) {
     return;
   }
 
