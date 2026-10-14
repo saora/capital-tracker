@@ -3,7 +3,7 @@ import type { PerformancePeriod } from '../types/portfolio';
 import type { InvestmentSheetsData } from '../services/google-sheets.service';
 import type { Movement, CatalogAsset } from '../services/movements.service';
 
-export type MovementPeriod = '1D' | '1S' | '1M' | '1A';
+export type MovementPeriod = '1S' | '1M' | '3M' | '1A' | 'Todo';
 
 export interface AppState {
   activeRoute: AppRoute;
@@ -15,6 +15,8 @@ export interface AppState {
   isConnecting: boolean;
   isAuthLoading: boolean;
   connectionError: string;
+  googleSheetsRetryAfter: number | null;
+  lastSuccessfulRefreshAt: number | null;
   touchStartY: number | null;
   pullDistance: number;
   pullTracking: boolean;
@@ -30,6 +32,8 @@ export const appState: AppState = {
   isConnecting: false,
   isAuthLoading: false,
   connectionError: '',
+  googleSheetsRetryAfter: null,
+  lastSuccessfulRefreshAt: null,
   touchStartY: null,
   pullDistance: 0,
   pullTracking: false,
