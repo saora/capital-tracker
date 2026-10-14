@@ -333,12 +333,14 @@ export async function getInvestmentSheetsData(
       totalGain: summary.totalGain,
     });
   } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 429) throw error;
     console.warn("No se pudo guardar la captura del portafolio.", error);
   }
 
   try {
     historyPoints = await getPortfolioHistory(token);
   } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 429) throw error;
     console.warn("No se pudo leer el historial del portafolio.", error);
   }
 
