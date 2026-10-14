@@ -54,7 +54,7 @@ function renderMovementPeriods(selected: MovementPeriod): string {
     `).join('');
 }
 
-function renderMovement(movement: Movement): string {
+export function renderMovement(movement: Movement): string {
   const incoming = movement.type === 'Entrada';
   const signedAmount = `${incoming ? '+' : '−'}${formatCurrency(movement.amount, movement.currency)}`;
   const facts = [
