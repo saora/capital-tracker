@@ -51,6 +51,14 @@ let accessTokenExpiresAt: number | null = null;
 
 let pendingLogin: Promise<string> | null = null;
 let pendingTokenRefresh: Promise<string> | null = null;
+let tokenExpirationTimer: number | null = null;
+
+function clearTokenExpirationTimer(): void {
+  if (tokenExpirationTimer !== null) {
+    window.clearTimeout(tokenExpirationTimer);
+    tokenExpirationTimer = null;
+  }
+}
 
 function getGoogleOAuth2(): GoogleOAuth2 {
   const oauth2 = window.google?.accounts?.oauth2;
@@ -215,9 +223,18 @@ function saveToken(
   email: string,
   expiresIn: number,
 ): void {
+  clearTokenExpirationTimer();
+
   activeAccessToken = accessToken;
   authenticatedEmail = email;
   accessTokenExpiresAt = Date.now() + expiresIn * 1000;
+
+  tokenExpirationTimer = window.setTimeout(() => {
+    if (activeAccessToken !== accessToken) return;
+
+    signOutFromGoogle();
+    window.dispatchEvent(new Event('google-session-expired'));
+  }, expiresIn * 1000);
 }
 
 /**
@@ -358,6 +375,7 @@ export function getActiveAccessToken(): string | null {
  * No revoca el consentimiento de Google.
  */
 export function signOutFromGoogle(): void {
+  clearTokenExpirationTimer();
   activeAccessToken = null;
   authenticatedEmail = null;
   accessTokenExpiresAt = null;
