@@ -11,13 +11,16 @@ export interface PortfolioPosition {
   gainValue: number;
   gainPercent: number;
   valueLabel: string;
+  quantityLabel: string;
+  gainPercentLabel: string;
+  gainAmountLabel: string;
+  gainArrow: string;
   currentPriceLabel: string;
   dailyChangeLabel: string;
   dailyChangeClass:
     | 'text-positive'
     | 'text-negative'
     | 'text-muted';
-  gainLabel: string;
   gainClass: 'text-positive' | 'text-negative';
 }
 

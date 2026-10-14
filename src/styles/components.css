@@ -339,6 +339,15 @@
   white-space: nowrap;
 }
 
+.portfolio-location-card__return--brokerage {
+  font-weight: 400;
+}
+
+.portfolio-location-card__separator,
+.portfolio-location-card__gain--brokerage {
+  font-weight: 700;
+}
+
 .portfolio-location-card__gain.text-positive,
 .portfolio-location-card__return.text-positive {
   color: var(--color-success);
@@ -402,6 +411,26 @@
   text-align: right;
 }
 
+.holding-row__value-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.holding-row__quantity,
+.holding-row__value-separator {
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-row__value-separator {
+  font-weight: 700;
+}
+
 .holding-row__name > span {
   overflow: hidden;
   color: var(--color-text-secondary);
@@ -435,10 +464,24 @@
 }
 
 .portfolio-holding__gain {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.25rem;
   white-space: nowrap;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
+}
+
+.portfolio-holding__gain-percent {
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+.portfolio-holding__gain > strong {
+  font-size: inherit;
+  font-weight: 700;
 }
 
 .holding-row__numbers .text-positive {

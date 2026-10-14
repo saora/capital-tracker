@@ -73,9 +73,18 @@ export function presentPortfolio(
         typeof dailyChange === "number" && Number.isFinite(dailyChange);
 
       const gainAmountLabel = formatCurrency(Math.abs(gain), item.currency);
-      const gainLabel =
-        `${gain > 0 ? "+" : gain < 0 ? "-" : ""}${gainAmountLabel} ` +
-        `(${gainPercent.toFixed(2)}%)`;
+      const quantityText = String(item.quantity);
+      const [quantityInteger, quantityDecimals = ""] = quantityText.split(".");
+      const quantityLabel =
+        quantityDecimals.length > 3
+          ? `${new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 0,
+            }).format(Number(quantityInteger))}.${quantityDecimals.slice(0, 3)}`
+          : new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 3,
+            }).format(item.quantity);
+      const gainPercentLabel = `${Math.abs(gainPercent).toFixed(2)}%`;
+      const gainArrow = gain > 0 ? "↗" : gain < 0 ? "↘" : "→";
 
       let dailyChangeClass: PortfolioPosition["dailyChangeClass"];
 
@@ -98,10 +107,13 @@ export function presentPortfolio(
         gainValue: gain,
         gainPercent,
         valueLabel: formatPositionValue(value, item.currency),
+        quantityLabel,
+        gainPercentLabel,
+        gainAmountLabel,
+        gainArrow,
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
         dailyChangeClass,
-        gainLabel,
         gainClass: gain >= 0 ? "text-positive" : "text-negative",
       };
     });

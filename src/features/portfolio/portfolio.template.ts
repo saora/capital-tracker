@@ -73,10 +73,16 @@ export function renderPortfolioTemplate(
               </div>
 
               <div class="holding-row__numbers">
-                <strong>${escapeHtml(position.valueLabel)}</strong>
+                <div class="holding-row__value-line">
+                  <span class="holding-row__quantity">${escapeHtml(position.quantityLabel)}</span>
+                  <span class="holding-row__value-separator" aria-hidden="true">·</span>
+                  <strong>${escapeHtml(position.valueLabel)}</strong>
+                </div>
 
                 <span class="portfolio-holding__gain ${position.gainClass}">
-                  ${escapeHtml(position.gainLabel)}
+                  <span class="portfolio-holding__gain-percent"><span aria-hidden="true">${escapeHtml(position.gainArrow)}</span> ${escapeHtml(position.gainPercentLabel)}</span>
+                  <strong aria-hidden="true">·</strong>
+                  <strong>${escapeHtml(position.gainAmountLabel)}</strong>
                 </span>
               </div>
             </article>
@@ -92,14 +98,17 @@ export function renderPortfolioTemplate(
       const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
       const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
       const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
-      const performanceLabel = formatPercent(performance);
+      const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const normalizedLocation = location.toLowerCase();
+      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
+      const performanceLabel = isBrokerage
+        ? formatPercent(Math.abs(performance)).replace(/^\+/, '')
+        : formatPercent(performance);
+      const gainArrow = gain > 0 ? '↗' : gain < 0 ? '↘' : '→';
       const portfolioWeight = totalPortfolioValue > 0
         ? (currentValue / totalPortfolioValue) * 100
         : 0;
       const portfolioWeightLabel = formatPercent(portfolioWeight);
-      const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const normalizedLocation = location.toLowerCase();
-      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
       const portfolioWeightHtml = isBrokerage
         ? `<span class="portfolio-location-card__weight">PESO: ${escapeHtml(portfolioWeightLabel)}</span>`
         : '';
@@ -130,8 +139,9 @@ export function renderPortfolioTemplate(
             <div class="portfolio-location-card__numbers">
               <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
               <div class="portfolio-location-card__performance">
-                <span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span>
-                <span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>
+                ${isBrokerage
+                  ? `<span class="portfolio-location-card__return portfolio-location-card__return--brokerage ${gainClass}"><span aria-hidden="true">${gainArrow}</span> ${escapeHtml(performanceLabel)}</span><strong class="portfolio-location-card__separator" aria-hidden="true">·</strong><strong class="portfolio-location-card__gain portfolio-location-card__gain--brokerage ${gainClass}">${escapeHtml(amountLabel)}</strong>`
+                  : `<span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span><span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>`}
               </div>
             </div>
           </header>
