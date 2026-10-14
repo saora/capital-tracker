@@ -14,6 +14,7 @@ import {
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
 import { appendMovement, deleteMovement, getMovements, updateMovement } from "../services/movements.service";
+import { GoogleApiError, GOOGLE_SHEETS_RATE_LIMIT_MESSAGE } from "../services/google-api-error.service";
 import { closeAccountMenu } from "./session-menu";
 
 interface AppEventHandlers {
@@ -423,7 +424,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
         try { appState.movements = await getMovements(token); } catch { /* append already confirmed; keep local record */ }
         renderPage(app); showMovementSuccess(app, editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.");
       } catch (error) {
-        target.dataset.submitting = "false"; updateMovementSubmitState(target); if (status) { status.textContent = error instanceof Error ? error.message : "No fue posible guardar el movimiento."; status.className = "movement-form__status movement-field--full is-error"; }
+        target.dataset.submitting = "false"; updateMovementSubmitState(target); if (status) { status.textContent = error instanceof GoogleApiError && error.status === 429 ? GOOGLE_SHEETS_RATE_LIMIT_MESSAGE : error instanceof Error ? error.message : "No fue posible guardar el movimiento."; status.className = "movement-form__status movement-field--full is-error"; }
       }
     })();
   });
