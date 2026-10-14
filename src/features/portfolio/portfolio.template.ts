@@ -138,7 +138,7 @@ export function renderPortfolioTemplate(
               <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
               <div class="portfolio-location-card__performance">
                 ${isBrokerage
-                  ? `<span class="portfolio-location-card__return ${gainClass}"><span aria-hidden="true">${gainArrow}</span> ${escapeHtml(performanceLabel)}</span><strong aria-hidden="true">·</strong><strong class="portfolio-location-card__gain ${gainClass}">${escapeHtml(amountLabel)}</strong>`
+                  ? `<span class="portfolio-location-card__return portfolio-location-card__return--brokerage ${gainClass}"><span aria-hidden="true">${gainArrow}</span> ${escapeHtml(performanceLabel)}</span><strong class="portfolio-location-card__separator" aria-hidden="true">·</strong><strong class="portfolio-location-card__gain portfolio-location-card__gain--brokerage ${gainClass}">${escapeHtml(amountLabel)}</strong>`
                   : `<span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span><span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>`}
               </div>
             </div>
