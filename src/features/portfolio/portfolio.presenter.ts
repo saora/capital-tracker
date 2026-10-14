@@ -77,7 +77,7 @@ export function presentPortfolio(
         maximumFractionDigits: item.symbol.toUpperCase() === "BTC" ? 3 : 6,
       }).format(item.quantity);
       const gainPercentLabel = `${Math.abs(gainPercent).toFixed(2)}%`;
-      const gainArrow = gain > 0 ? "↑" : gain < 0 ? "↓" : "→";
+      const gainArrow = gain > 0 ? "↗" : gain < 0 ? "↘" : "→";
 
       let dailyChangeClass: PortfolioPosition["dailyChangeClass"];
 
