@@ -79,7 +79,7 @@ export function presentPortfolio(
         quantityDecimals.length > 3
           ? `${new Intl.NumberFormat("en-US", {
               maximumFractionDigits: 0,
-            }).format(Math.trunc(item.quantity))}.${quantityDecimals.slice(0, 3)}`
+            }).format(Number(quantityInteger))}.${quantityDecimals.slice(0, 3)}`
           : new Intl.NumberFormat("en-US", {
               maximumFractionDigits: 3,
             }).format(item.quantity);
