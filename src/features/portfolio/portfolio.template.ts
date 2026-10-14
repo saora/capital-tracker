@@ -101,7 +101,9 @@ export function renderPortfolioTemplate(
       const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const normalizedLocation = location.toLowerCase();
       const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
-      const performanceLabel = formatPercent(isBrokerage ? Math.abs(performance) : performance);
+      const performanceLabel = isBrokerage
+        ? formatPercent(Math.abs(performance)).replace(/^\+/, '')
+        : formatPercent(performance);
       const gainArrow = gain > 0 ? '↗' : gain < 0 ? '↘' : '→';
       const portfolioWeight = totalPortfolioValue > 0
         ? (currentValue / totalPortfolioValue) * 100
