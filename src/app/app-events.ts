@@ -444,7 +444,7 @@ function initializePullToRefresh(app: HTMLDivElement): void {
   }, { passive: false });
   const finishPull = (): void => {
     const shouldRefresh = appState.pullTracking && appState.pullDistance >= PULL_THRESHOLD && appStateHasSession() && !appState.isConnecting; appState.touchStartY = null; appState.pullTracking = false; appState.pullDistance = 0;
-    if (shouldRefresh) void connectGoogleSheets(app); else { const indicator = app.querySelector<HTMLElement>("[data-refresh-indicator]"); if (indicator) { indicator.style.transform = ""; indicator.style.opacity = ""; } }
+    if (shouldRefresh) void connectGoogleSheets(app, undefined, true); else { const indicator = app.querySelector<HTMLElement>("[data-refresh-indicator]"); if (indicator) { indicator.style.transform = ""; indicator.style.opacity = ""; } }
   };
   app.addEventListener("touchend", finishPull, { passive: true }); app.addEventListener("touchcancel", finishPull, { passive: true });
 }
