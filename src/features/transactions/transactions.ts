@@ -36,13 +36,14 @@ function accountOptions(catalog: CatalogAsset[], category: 'Cuenta bancaria' | '
     .join('');
 }
 
-type MovementPeriod = '1D' | '1S' | '1M' | '1A';
+type MovementPeriod = '1S' | '1M' | '3M' | '1A' | 'Todo';
 
 const movementPeriodLabels: Record<MovementPeriod, string> = {
-  '1D': '1D',
   '1S': '1S',
   '1M': '1M',
+  '3M': '3M',
   '1A': '1A',
+  Todo: 'Todo',
 };
 
 function localDateValue(date: Date): string {
@@ -53,15 +54,17 @@ function localDateValue(date: Date): string {
 }
 
 function filterMovements(movements: Movement[], period: MovementPeriod): Movement[] {
+  if (period === 'Todo') return movements;
+
   const today = new Date();
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const start = new Date(end);
-  if (period === '1D') {
-    // Only movements made today.
-  } else if (period === '1S') {
+  if (period === '1S') {
     start.setDate(start.getDate() - 6);
   } else if (period === '1M') {
     start.setDate(start.getDate() - 29);
+  } else if (period === '3M') {
+    start.setDate(start.getDate() - 89);
   } else {
     start.setDate(start.getDate() - 364);
   }
@@ -274,11 +277,13 @@ export function renderTransactions(
           <h2>Historial</h2>
           <span class="section-count">${filteredMovements.length}</span>
         </div>
-        <div class="chart-periods movement-periods" role="group" aria-label="Filtrar historial de movimientos">
-          ${renderMovementPeriods(selectedPeriod)}
-        </div>
         <div class="card movement-history">
-          ${movementsHtml}
+          <div class="chart-periods movement-periods" role="group" aria-label="Filtrar historial de movimientos">
+            ${renderMovementPeriods(selectedPeriod)}
+          </div>
+          <div class="movement-history__items">
+            ${movementsHtml}
+          </div>
         </div>
       </section>
     </section>
