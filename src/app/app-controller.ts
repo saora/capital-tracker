@@ -92,6 +92,19 @@ export function initializeApp(app: HTMLDivElement): void {
     },
   });
 
+  window.addEventListener('google-session-expired', () => {
+    appState.investmentData = null;
+    appState.movements = [];
+    appState.catalog = [];
+    appState.activeRoute = 'dashboard';
+    appState.activePeriod = '1M';
+    appState.connectionError = 'Tu sesión ha expirado. Inicia sesión nuevamente.';
+    appState.isAuthLoading = false;
+    appState.isConnecting = false;
+    closeAccountMenu();
+    renderPage(app);
+  });
+
   renderPage(app);
 
   // Conserva la sesión existente y carga los datos cada vez que arranca la app.
