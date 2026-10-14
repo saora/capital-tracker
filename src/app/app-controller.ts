@@ -82,6 +82,8 @@ export async function handleGoogleLogout(
   }
 }
 
+const MIN_BACKGROUND_REFRESH_INTERVAL_MS = 60_000;
+
 export function initializeApp(app: HTMLDivElement): void {
   initializeAssetLogoFallback(app);
 
@@ -117,6 +119,14 @@ export function initializeApp(app: HTMLDivElement): void {
   // Refresh when the user returns to the app/tab after leaving it in the background.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible' || !getSessionAccessToken()) {
+      return;
+    }
+
+    // Avoid re-reading several Sheets ranges when the user quickly returns to the app.
+    if (
+      appState.lastSuccessfulRefreshAt !== null &&
+      Date.now() - appState.lastSuccessfulRefreshAt < MIN_BACKGROUND_REFRESH_INTERVAL_MS
+    ) {
       return;
     }
 
