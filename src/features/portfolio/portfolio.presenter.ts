@@ -102,7 +102,7 @@ export function presentPortfolio(
         valueLabel: formatPositionValue(value, item.currency),
         quantityLabel,
         gainPercentLabel,
-        gainAmountLabel: `${gain < 0 ? "-" : gain > 0 ? "+" : ""}${gainAmountLabel}`,
+        gainAmountLabel,
         gainArrow,
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
