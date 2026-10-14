@@ -1,6 +1,7 @@
 import type { Movement, CatalogAsset } from '../../services/movements.service';
 import {
   accountOptions,
+  renderEmptyMovementsTemplate,
   renderMovement,
   renderTransactionsTemplate,
   type MovementPeriod,
@@ -43,7 +44,7 @@ export function renderTransactions(
   const filteredMovements = filterMovements(movements, selectedPeriod);
   const movementsHtml = filteredMovements.length
     ? filteredMovements.map(renderMovement).join('')
-    : '<div class="movement-empty">No hay movimientos en este periodo.</div>';
+    : renderEmptyMovementsTemplate();
 
   return renderTransactionsTemplate(
     bankOptions,
