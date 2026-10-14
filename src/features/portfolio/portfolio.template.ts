@@ -98,7 +98,8 @@ export function renderPortfolioTemplate(
       const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
       const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
       const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
-      const performanceLabel = formatPercent(performance);
+      const performanceLabel = formatPercent(isBrokerage ? Math.abs(performance) : performance);
+      const gainArrow = gain > 0 ? '↗' : gain < 0 ? '↘' : '→';
       const portfolioWeight = totalPortfolioValue > 0
         ? (currentValue / totalPortfolioValue) * 100
         : 0;
@@ -136,8 +137,9 @@ export function renderPortfolioTemplate(
             <div class="portfolio-location-card__numbers">
               <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
               <div class="portfolio-location-card__performance">
-                <span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span>
-                <span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>
+                ${isBrokerage
+                  ? `<span class="portfolio-location-card__return ${gainClass}"><span aria-hidden="true">${gainArrow}</span> ${escapeHtml(performanceLabel)}</span><strong aria-hidden="true">·</strong><strong class="portfolio-location-card__gain ${gainClass}">${escapeHtml(amountLabel)}</strong>`
+                  : `<span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span><span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>`}
               </div>
             </div>
           </header>
