@@ -330,7 +330,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
       void (async () => { try { if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión."); await deleteMovement(token, id); appState.movements = appState.movements.filter((item) => item.id !== id); dialog.close(); renderPage(app); showMovementSuccess(app, "Movimiento eliminado correctamente."); } catch (error) { confirmAction.disabled = false; window.alert(error instanceof GoogleApiError && error.status === 429 ? GOOGLE_SHEETS_RATE_LIMIT_MESSAGE : error instanceof Error ? error.message : "No fue posible eliminar el movimiento."); } })(); return;
     }
     const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
-    if (movementPeriodElement) { const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined; if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) { appState.movementPeriod = period; renderPage(app); } return; }
+    if (movementPeriodElement) { const period = movementPeriodElement.dataset.movementPeriod as "1S" | "1M" | "3M" | "1A" | "Todo" | undefined; if (period && ["1S", "1M", "3M", "1A", "Todo"].includes(period) && period !== appState.movementPeriod) { appState.movementPeriod = period; renderPage(app); } return; }
     const routeElement = target.closest<HTMLElement>("[data-route]");
     if (routeElement) {
       const route = routeElement.dataset.route as AppRoute | undefined;

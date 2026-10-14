@@ -258,6 +258,8 @@
 .movement-form__status.is-error { color: var(--color-danger); }
 .movement-form__status.is-success { color: var(--color-success); }
 .movement-history { display: grid; gap: 0; padding: 0 var(--space-4); }
+.movement-history__items { display: grid; gap: 0; min-width: 0; }
+.movement-periods { margin: .5rem 0 .75rem; }
 .movement-row { border-bottom: 1px solid var(--color-border); }
 .movement-row:last-child { border-bottom: 0; }
 .movement-row__summary { display:flex; align-items:center; width:100%; gap:.65rem; padding:.85rem 0; border:0; background:transparent; color:inherit; text-align:left; cursor:pointer; }
