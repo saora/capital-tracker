@@ -339,6 +339,15 @@
   white-space: nowrap;
 }
 
+.portfolio-location-card__return--brokerage {
+  font-weight: 400;
+}
+
+.portfolio-location-card__separator,
+.portfolio-location-card__gain--brokerage {
+  font-weight: 700;
+}
+
 .portfolio-location-card__gain.text-positive,
 .portfolio-location-card__return.text-positive {
   color: var(--color-success);
