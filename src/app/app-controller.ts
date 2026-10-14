@@ -37,7 +37,7 @@ export async function handleGoogleLogin(
     const accessToken = await startGoogleSession();
 
     appState.isAuthLoading = false;
-    await connectGoogleSheets(app, accessToken);
+    await connectGoogleSheets(app, accessToken, true);
   } catch (error) {
     appState.connectionError =
       error instanceof Error
@@ -68,6 +68,8 @@ export async function handleGoogleLogout(
     appState.investmentData = null;
     appState.movements = [];
     appState.catalog = [];
+    appState.lastSuccessfulRefreshAt = null;
+    appState.googleSheetsRetryAfter = null;
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
     appState.connectionError = '';
@@ -100,6 +102,8 @@ export function initializeApp(app: HTMLDivElement): void {
     appState.investmentData = null;
     appState.movements = [];
     appState.catalog = [];
+    appState.lastSuccessfulRefreshAt = null;
+    appState.googleSheetsRetryAfter = null;
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
     appState.connectionError = 'Tu sesión ha expirado. Inicia sesión nuevamente.';
