@@ -37,7 +37,7 @@ export async function handleGoogleLogin(
     const accessToken = await startGoogleSession();
 
     appState.isAuthLoading = false;
-    await connectGoogleSheets(app, accessToken);
+    await connectGoogleSheets(app, accessToken, true);
   } catch (error) {
     appState.connectionError =
       error instanceof Error
@@ -68,6 +68,8 @@ export async function handleGoogleLogout(
     appState.investmentData = null;
     appState.movements = [];
     appState.catalog = [];
+    appState.lastSuccessfulRefreshAt = null;
+    appState.googleSheetsRetryAfter = null;
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
     appState.connectionError = '';
@@ -81,6 +83,8 @@ export async function handleGoogleLogout(
     renderPage(app);
   }
 }
+
+const MIN_BACKGROUND_REFRESH_INTERVAL_MS = 60_000;
 
 export function initializeApp(app: HTMLDivElement): void {
   initializeAssetLogoFallback(app);
@@ -98,6 +102,8 @@ export function initializeApp(app: HTMLDivElement): void {
     appState.investmentData = null;
     appState.movements = [];
     appState.catalog = [];
+    appState.lastSuccessfulRefreshAt = null;
+    appState.googleSheetsRetryAfter = null;
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
     appState.connectionError = 'Tu sesión ha expirado. Inicia sesión nuevamente.';
@@ -117,6 +123,14 @@ export function initializeApp(app: HTMLDivElement): void {
   // Refresh when the user returns to the app/tab after leaving it in the background.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible' || !getSessionAccessToken()) {
+      return;
+    }
+
+    // Avoid re-reading several Sheets ranges when the user quickly returns to the app.
+    if (
+      appState.lastSuccessfulRefreshAt !== null &&
+      Date.now() - appState.lastSuccessfulRefreshAt < MIN_BACKGROUND_REFRESH_INTERVAL_MS
+    ) {
       return;
     }
 

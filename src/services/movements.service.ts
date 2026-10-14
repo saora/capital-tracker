@@ -1,4 +1,5 @@
 import { handleGoogleUnauthorized } from "./google-auth.service";
+import { createGoogleApiError } from "./google-api-error.service";
 import type { Currency } from "../types/investment";
 
 const API_URL = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -86,7 +87,7 @@ async function sheetsRequest<T>(
 
   if (!response.ok) {
     handleGoogleUnauthorized(response.status);
-    throw new Error(`Google Sheets respondió ${response.status}: ${await response.text()}`);
+    throw await createGoogleApiError(response);
   }
 
   if (response.status === 204) return undefined as T;

@@ -15,6 +15,8 @@ export interface AppState {
   isConnecting: boolean;
   isAuthLoading: boolean;
   connectionError: string;
+  googleSheetsRetryAfter: number | null;
+  lastSuccessfulRefreshAt: number | null;
   touchStartY: number | null;
   pullDistance: number;
   pullTracking: boolean;
@@ -30,6 +32,8 @@ export const appState: AppState = {
   isConnecting: false,
   isAuthLoading: false,
   connectionError: '',
+  googleSheetsRetryAfter: null,
+  lastSuccessfulRefreshAt: null,
   touchStartY: null,
   pullDistance: 0,
   pullTracking: false,
