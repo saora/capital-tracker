@@ -295,7 +295,8 @@ export async function getInvestmentSheetsData(
     (total, item) => total + item.currentValue - item.invested,
     0,
   );
-  const totalGain = unrealizedGain + realizedGain + fixedIncomeGain;
+  const variableTotalGain = unrealizedGain + realizedGain;
+  const totalGain = variableTotalGain + fixedIncomeGain;
 
   const dailyChangeAmount = variableIncome.reduce((total, item) => {
     const dailyChangePercent = item.investment.dailyChangePercent;
@@ -351,6 +352,6 @@ export async function getInvestmentSheetsData(
     investments: parsedInvestments.map((item) => item.investment),
     summary,
     historyPoints,
-    gainSummaryText: totalGain.toFixed(2),
+    gainSummaryText: variableTotalGain.toFixed(2),
   };
 }
