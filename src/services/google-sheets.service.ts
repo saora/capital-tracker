@@ -1,4 +1,5 @@
 import { handleGoogleUnauthorized, signInWithGoogle } from "./google-auth.service";
+import { createGoogleApiError, GoogleApiError } from "./google-api-error.service";
 import type { Investment, AssetType } from "../types/investment";
 import type { PortfolioSummary, ChartPoint } from "../types/portfolio";
 import {
@@ -95,9 +96,7 @@ async function readRange(token: string, range: string): Promise<SheetRow[]> {
 
   if (!response.ok) {
     handleGoogleUnauthorized(response.status);
-    throw new Error(
-      `Google Sheets respondió ${response.status}: ${await response.text()}`,
-    );
+    throw await createGoogleApiError(response);
   }
 
   const result = (await response.json()) as {
@@ -334,12 +333,14 @@ export async function getInvestmentSheetsData(
       totalGain: summary.totalGain,
     });
   } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 429) throw error;
     console.warn("No se pudo guardar la captura del portafolio.", error);
   }
 
   try {
     historyPoints = await getPortfolioHistory(token);
   } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 429) throw error;
     console.warn("No se pudo leer el historial del portafolio.", error);
   }
 
