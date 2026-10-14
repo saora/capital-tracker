@@ -4,6 +4,8 @@ import { initializeAssetLogoFallback } from '../components/asset-logo/asset-logo
 import {
   endGoogleSession,
   getSessionAccessToken,
+  isActiveAccessTokenExpired,
+  expireGoogleSession,
   startGoogleSession,
 } from '../features/auth/auth';
 
@@ -114,11 +116,17 @@ export function initializeApp(app: HTMLDivElement): void {
 
   // Refresh when the user returns to the app/tab after leaving it in the background.
   document.addEventListener('visibilitychange', () => {
-    if (
-      document.visibilityState === 'visible' &&
-      getSessionAccessToken() &&
-      !appState.isConnecting
-    ) {
+    if (document.visibilityState !== 'visible' || !getSessionAccessToken()) {
+      return;
+    }
+
+    // Do not make protected API requests with a token that is already expired.
+    if (isActiveAccessTokenExpired()) {
+      expireGoogleSession();
+      return;
+    }
+
+    if (!appState.isConnecting) {
       void connectGoogleSheets(app);
     }
   });
