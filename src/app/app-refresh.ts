@@ -1,4 +1,8 @@
 import { getSessionAccessToken } from '../features/auth/auth';
+import {
+  GoogleApiError,
+  GOOGLE_SHEETS_RATE_LIMIT_MESSAGE,
+} from '../services/google-api-error.service';
 import { getInvestmentSheetsData } from '../services/google-sheets.service';
 import { getCatalog, getMovements } from '../services/movements.service';
 
@@ -10,6 +14,18 @@ export async function connectGoogleSheets(
   accessToken?: string,
 ): Promise<void> {
   if (appState.isConnecting) return;
+
+  const now = Date.now();
+  if (appState.googleSheetsRetryAfter !== null) {
+    if (now < appState.googleSheetsRetryAfter) {
+      appState.connectionError = GOOGLE_SHEETS_RATE_LIMIT_MESSAGE;
+      renderPage(app);
+      return;
+    }
+
+    appState.googleSheetsRetryAfter = null;
+    appState.connectionError = '';
+  }
 
   const token = accessToken ?? getSessionAccessToken();
   if (!token) {
@@ -31,14 +47,23 @@ export async function connectGoogleSheets(
     appState.investmentData = investmentData;
     appState.movements = movements;
     appState.catalog = catalog;
+    appState.lastSuccessfulRefreshAt = Date.now();
+    appState.googleSheetsRetryAfter = null;
+    appState.connectionError = '';
   } catch (error) {
     // A 401 invalidates the session synchronously; do not replace the login
     // screen's session-expired state with a stale request error.
     if (getSessionAccessToken()) {
-      appState.connectionError =
-        error instanceof Error
-          ? error.message
-          : 'No fue posible cargar los datos de Google Sheets.';
+      if (error instanceof GoogleApiError && error.status === 429) {
+        appState.googleSheetsRetryAfter = Date.now() + error.retryAfterMs;
+        appState.connectionError = GOOGLE_SHEETS_RATE_LIMIT_MESSAGE;
+        console.warn('Google Sheets alcanzó el límite de solicitudes.', error.technicalMessage);
+      } else {
+        appState.connectionError =
+          error instanceof Error
+            ? error.message
+            : 'No fue posible cargar los datos de Google Sheets.';
+      }
     }
   } finally {
     appState.isConnecting = false;
