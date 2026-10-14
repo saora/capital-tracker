@@ -73,9 +73,16 @@ export function presentPortfolio(
         typeof dailyChange === "number" && Number.isFinite(dailyChange);
 
       const gainAmountLabel = formatCurrency(Math.abs(gain), item.currency);
-      const quantityLabel = new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: item.symbol.toUpperCase() === "BTC" ? 3 : 6,
-      }).format(item.quantity);
+      const quantityText = String(item.quantity);
+      const [quantityInteger, quantityDecimals = ""] = quantityText.split(".");
+      const quantityLabel =
+        quantityDecimals.length > 3
+          ? `${new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 0,
+            }).format(Math.trunc(item.quantity))}.${quantityDecimals.slice(0, 3)}`
+          : new Intl.NumberFormat("en-US", {
+              maximumFractionDigits: 3,
+            }).format(item.quantity);
       const gainPercentLabel = `${Math.abs(gainPercent).toFixed(2)}%`;
       const gainArrow = gain > 0 ? "↗" : gain < 0 ? "↘" : "→";
 
