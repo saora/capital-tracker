@@ -98,15 +98,15 @@ export function renderPortfolioTemplate(
       const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
       const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
       const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
+      const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const normalizedLocation = location.toLowerCase();
+      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
       const performanceLabel = formatPercent(isBrokerage ? Math.abs(performance) : performance);
       const gainArrow = gain > 0 ? '↗' : gain < 0 ? '↘' : '→';
       const portfolioWeight = totalPortfolioValue > 0
         ? (currentValue / totalPortfolioValue) * 100
         : 0;
       const portfolioWeightLabel = formatPercent(portfolioWeight);
-      const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const normalizedLocation = location.toLowerCase();
-      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
       const portfolioWeightHtml = isBrokerage
         ? `<span class="portfolio-location-card__weight">PESO: ${escapeHtml(portfolioWeightLabel)}</span>`
         : '';
