@@ -86,6 +86,10 @@ export function renderMovement(movement: Movement): string {
     </article>`;
 }
 
+export function renderEmptyMovementsTemplate(): string {
+  return '<div class="movement-empty">No hay movimientos en este periodo.</div>';
+}
+
 export function renderTransactionsTemplate(
   bankOptions: string,
   assetOptions: string,
