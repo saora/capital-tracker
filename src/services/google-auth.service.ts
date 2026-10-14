@@ -52,6 +52,7 @@ let accessTokenExpiresAt: number | null = null;
 let pendingLogin: Promise<string> | null = null;
 let pendingTokenRefresh: Promise<string> | null = null;
 let tokenExpirationTimer: number | null = null;
+let sessionExpirationHandled = false;
 
 function clearTokenExpirationTimer(): void {
   if (tokenExpirationTimer !== null) {
@@ -229,11 +230,11 @@ function saveToken(
   authenticatedEmail = email;
   accessTokenExpiresAt = Date.now() + expiresIn * 1000;
 
+  sessionExpirationHandled = false;
+
   tokenExpirationTimer = window.setTimeout(() => {
     if (activeAccessToken !== accessToken) return;
-
-    signOutFromGoogle();
-    window.dispatchEvent(new Event('google-session-expired'));
+    expireGoogleSession();
   }, expiresIn * 1000);
 }
 
@@ -368,6 +369,24 @@ export function getAuthenticatedEmail(): string | null {
 
 export function getActiveAccessToken(): string | null {
   return activeAccessToken;
+}
+
+/** Returns true when the current access token has reached its expiry time. */
+export function isActiveAccessTokenExpired(): boolean {
+  return Boolean(activeAccessToken && accessTokenExpiresAt !== null && accessTokenExpiresAt <= Date.now());
+}
+
+/** Invalidates the local session and notifies the app exactly once. */
+export function expireGoogleSession(): void {
+  if (!activeAccessToken || sessionExpirationHandled) return;
+  sessionExpirationHandled = true;
+  signOutFromGoogle();
+  window.dispatchEvent(new Event('google-session-expired'));
+}
+
+/** Invalidates the session when an authenticated Google API returns 401. */
+export function handleGoogleUnauthorized(status: number): void {
+  if (status === 401) expireGoogleSession();
 }
 
 /**

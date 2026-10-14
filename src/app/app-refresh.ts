@@ -32,10 +32,14 @@ export async function connectGoogleSheets(
     appState.movements = movements;
     appState.catalog = catalog;
   } catch (error) {
-    appState.connectionError =
-      error instanceof Error
-        ? error.message
-        : 'No fue posible cargar los datos de Google Sheets.';
+    // A 401 invalidates the session synchronously; do not replace the login
+    // screen's session-expired state with a stale request error.
+    if (getSessionAccessToken()) {
+      appState.connectionError =
+        error instanceof Error
+          ? error.message
+          : 'No fue posible cargar los datos de Google Sheets.';
+    }
   } finally {
     appState.isConnecting = false;
     renderPage(app);
