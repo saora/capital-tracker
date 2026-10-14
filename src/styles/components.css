@@ -427,6 +427,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.holding-row__value-separator {
+  font-weight: 700;
+}
+
 .holding-row__name > span {
   overflow: hidden;
   color: var(--color-text-secondary);
@@ -471,7 +475,7 @@
 }
 
 .portfolio-holding__gain-percent {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 400;
 }
 
