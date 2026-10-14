@@ -14,6 +14,7 @@ import {
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
 import { appendMovement, deleteMovement, getMovements, updateMovement } from "../services/movements.service";
+import { GoogleApiError, GOOGLE_SHEETS_RATE_LIMIT_MESSAGE } from "../services/google-api-error.service";
 import { closeAccountMenu } from "./session-menu";
 
 interface AppEventHandlers {
@@ -326,10 +327,10 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
       const action = dialog.dataset.action;
       if (action === "save") { dialog.close(); const form = app.querySelector<HTMLFormElement>("#movement-form"); if (form) { form.dataset.confirmedSave = "true"; form.requestSubmit(); } return; }
       const id = dialog.dataset.movementId; const token = getSessionAccessToken(); if (action !== "delete" || !id) return; confirmAction.disabled = true;
-      void (async () => { try { if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión."); await deleteMovement(token, id); appState.movements = appState.movements.filter((item) => item.id !== id); dialog.close(); renderPage(app); showMovementSuccess(app, "Movimiento eliminado correctamente."); } catch (error) { confirmAction.disabled = false; window.alert(error instanceof Error ? error.message : "No fue posible eliminar el movimiento."); } })(); return;
+      void (async () => { try { if (!token) throw new Error("La sesión de Google expiró. Vuelve a iniciar sesión."); await deleteMovement(token, id); appState.movements = appState.movements.filter((item) => item.id !== id); dialog.close(); renderPage(app); showMovementSuccess(app, "Movimiento eliminado correctamente."); } catch (error) { confirmAction.disabled = false; window.alert(error instanceof GoogleApiError && error.status === 429 ? GOOGLE_SHEETS_RATE_LIMIT_MESSAGE : error instanceof Error ? error.message : "No fue posible eliminar el movimiento."); } })(); return;
     }
     const movementPeriodElement = target.closest<HTMLElement>("[data-movement-period]");
-    if (movementPeriodElement) { const period = movementPeriodElement.dataset.movementPeriod as "1D" | "1S" | "1M" | "1A" | undefined; if (period && ["1D", "1S", "1M", "1A"].includes(period) && period !== appState.movementPeriod) { appState.movementPeriod = period; renderPage(app); } return; }
+    if (movementPeriodElement) { const period = movementPeriodElement.dataset.movementPeriod as "1S" | "1M" | "3M" | "1A" | "Todo" | undefined; if (period && ["1S", "1M", "3M", "1A", "Todo"].includes(period) && period !== appState.movementPeriod) { appState.movementPeriod = period; renderPage(app); } return; }
     const routeElement = target.closest<HTMLElement>("[data-route]");
     if (routeElement) {
       const route = routeElement.dataset.route as AppRoute | undefined;
@@ -423,7 +424,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
         try { appState.movements = await getMovements(token); } catch { /* append already confirmed; keep local record */ }
         renderPage(app); showMovementSuccess(app, editId ? "Movimiento actualizado correctamente." : "Movimiento guardado correctamente.");
       } catch (error) {
-        target.dataset.submitting = "false"; updateMovementSubmitState(target); if (status) { status.textContent = error instanceof Error ? error.message : "No fue posible guardar el movimiento."; status.className = "movement-form__status movement-field--full is-error"; }
+        target.dataset.submitting = "false"; updateMovementSubmitState(target); if (status) { status.textContent = error instanceof GoogleApiError && error.status === 429 ? GOOGLE_SHEETS_RATE_LIMIT_MESSAGE : error instanceof Error ? error.message : "No fue posible guardar el movimiento."; status.className = "movement-form__status movement-field--full is-error"; }
       }
     })();
   });
@@ -443,7 +444,7 @@ function initializePullToRefresh(app: HTMLDivElement): void {
   }, { passive: false });
   const finishPull = (): void => {
     const shouldRefresh = appState.pullTracking && appState.pullDistance >= PULL_THRESHOLD && appStateHasSession() && !appState.isConnecting; appState.touchStartY = null; appState.pullTracking = false; appState.pullDistance = 0;
-    if (shouldRefresh) void connectGoogleSheets(app); else { const indicator = app.querySelector<HTMLElement>("[data-refresh-indicator]"); if (indicator) { indicator.style.transform = ""; indicator.style.opacity = ""; } }
+    if (shouldRefresh) void connectGoogleSheets(app, undefined, true); else { const indicator = app.querySelector<HTMLElement>("[data-refresh-indicator]"); if (indicator) { indicator.style.transform = ""; indicator.style.opacity = ""; } }
   };
   app.addEventListener("touchend", finishPull, { passive: true }); app.addEventListener("touchcancel", finishPull, { passive: true });
 }
