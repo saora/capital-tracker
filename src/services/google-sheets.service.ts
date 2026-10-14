@@ -1,5 +1,5 @@
 import { handleGoogleUnauthorized, signInWithGoogle } from "./google-auth.service";
-import { createGoogleApiError } from "./google-api-error.service";
+import { createGoogleApiError, GoogleApiError } from "./google-api-error.service";
 import type { Investment, AssetType } from "../types/investment";
 import type { PortfolioSummary, ChartPoint } from "../types/portfolio";
 import {
