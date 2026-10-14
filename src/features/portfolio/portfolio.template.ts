@@ -81,7 +81,7 @@ export function renderPortfolioTemplate(
 
                 <span class="portfolio-holding__gain ${position.gainClass}">
                   <span class="portfolio-holding__gain-percent"><span aria-hidden="true">${escapeHtml(position.gainArrow)}</span> ${escapeHtml(position.gainPercentLabel)}</span>
-                  <span aria-hidden="true">·</span>
+                  <strong aria-hidden="true">·</strong>
                   <strong>${escapeHtml(position.gainAmountLabel)}</strong>
                 </span>
               </div>
