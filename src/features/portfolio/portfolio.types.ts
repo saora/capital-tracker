@@ -21,7 +21,6 @@ export interface PortfolioPosition {
     | 'text-positive'
     | 'text-negative'
     | 'text-muted';
-  gainLabel: string;
   gainClass: 'text-positive' | 'text-negative';
 }
 
