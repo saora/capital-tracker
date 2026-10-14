@@ -73,10 +73,16 @@ export function renderPortfolioTemplate(
               </div>
 
               <div class="holding-row__numbers">
-                <strong>${escapeHtml(position.valueLabel)}</strong>
+                <div class="holding-row__value-line">
+                  <span class="holding-row__quantity">${escapeHtml(position.quantityLabel)}</span>
+                  <span class="holding-row__value-separator" aria-hidden="true">·</span>
+                  <strong>${escapeHtml(position.valueLabel)}</strong>
+                </div>
 
                 <span class="portfolio-holding__gain ${position.gainClass}">
-                  ${escapeHtml(position.gainLabel)}
+                  <span class="portfolio-holding__gain-percent"><span aria-hidden="true">${escapeHtml(position.gainArrow)}</span> ${escapeHtml(position.gainPercentLabel)}</span>
+                  <span aria-hidden="true">·</span>
+                  <strong>${escapeHtml(position.gainAmountLabel)}</strong>
                 </span>
               </div>
             </article>
