@@ -73,9 +73,11 @@ export function presentPortfolio(
         typeof dailyChange === "number" && Number.isFinite(dailyChange);
 
       const gainAmountLabel = formatCurrency(Math.abs(gain), item.currency);
-      const gainLabel =
-        `${gain > 0 ? "+" : gain < 0 ? "-" : ""}${gainAmountLabel} ` +
-        `(${gainPercent.toFixed(2)}%)`;
+      const quantityLabel = new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: item.symbol.toUpperCase() === "BTC" ? 3 : 6,
+      }).format(item.quantity);
+      const gainPercentLabel = `${Math.abs(gainPercent).toFixed(2)}%`;
+      const gainArrow = gain > 0 ? "↑" : gain < 0 ? "↓" : "→";
 
       let dailyChangeClass: PortfolioPosition["dailyChangeClass"];
 
@@ -98,10 +100,13 @@ export function presentPortfolio(
         gainValue: gain,
         gainPercent,
         valueLabel: formatPositionValue(value, item.currency),
+        quantityLabel,
+        gainPercentLabel,
+        gainAmountLabel: `${gain < 0 ? "-" : gain > 0 ? "+" : ""}${gainAmountLabel}`,
+        gainArrow,
         currentPriceLabel: formatMarketPrice(item.currentPrice, item.currency),
         dailyChangeLabel: formatDailyChange(dailyChange),
         dailyChangeClass,
-        gainLabel,
         gainClass: gain >= 0 ? "text-positive" : "text-negative",
       };
     });
