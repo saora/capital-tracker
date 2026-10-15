@@ -67,6 +67,7 @@ export function renderMovement(movement: Movement): string {
     ...(movement.commission !== undefined && ['Compra', 'Venta'].includes(movement.concept) ? [`<div><span>Total</span><strong>${escapeHtml(formatCurrency(movement.amount + movement.commission, movement.currency))}</strong></div>`] : []),
     ...(movement.quantity !== undefined ? [`<div><span>Número de títulos</span><strong>${escapeHtml(String(movement.quantity))}</strong></div>`] : []),
     ...(movement.averageCost !== undefined ? [`<div><span>Costo promedio</span><strong>${escapeHtml(formatCurrency(movement.averageCost, movement.currency))}</strong></div>`] : []),
+    ...(movement.origin ? [`<div><span>Origen</span><strong>${escapeHtml(movement.origin)}</strong></div>`] : []),
     ...(movement.notes ? [`<div class="movement-row__note"><span>Notas</span><strong>${escapeHtml(movement.notes)}</strong></div>`] : []),
   ].join('');
   return `
@@ -154,6 +155,15 @@ export function renderTransactionsTemplate(
             <select name="account" id="movement-asset" disabled>
               <option value="">Selecciona una acción o activo</option>
               ${assetOptions || '<option value="" disabled>No hay activos de tipo ETF, Accion o Crypto en Catalogo</option>'}
+            </select>
+          </label>
+
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
+            <span>Origen</span>
+            <select name="origin" id="movement-origin" disabled>
+              <option value="">Selecciona un origen</option>
+              <option value="GBM">GBM</option>
+              <option value="Bitso">Bitso</option>
             </select>
           </label>
 

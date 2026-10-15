@@ -9,9 +9,9 @@
   "theme_color": "#102a43",
   "icons": [
     {
-      "src": "/capital-tracker/pwa-icon.svg",
+      "src": "/capital-tracker/pwa-icon.png",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
