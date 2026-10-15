@@ -4,7 +4,7 @@ import { formatCurrency } from '../../../../utils/formatters';
 export function presentMetricsGrid({
   summary,
 }: MetricsGridData): string {
-  const totalGain = summary.totalValue - summary.invested;
+  const totalGain = summary.totalGain;
   const gainClass = totalGain >= 0
     ? 'text-positive'
     : 'text-negative';
