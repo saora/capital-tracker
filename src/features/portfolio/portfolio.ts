@@ -4,17 +4,17 @@ import { demoInvestments } from '../../services/investment-service';
 import { presentPortfolio } from './portfolio.presenter';
 import { renderPortfolioTemplate } from './portfolio.template';
 
-export function renderPortfolio(connectedData?: InvestmentSheetsData): string {
-  console.log('DEBUG: SE EJECUTA RENDER PORTFOLIO', {
-    hasConnectedData: Boolean(connectedData),
-    investmentsCount: connectedData?.investments.length,
-  });
-  
+import type { PortfolioProvider } from './portfolio.types';
+
+export function renderPortfolio(
+  connectedData?: InvestmentSheetsData,
+  provider: PortfolioProvider = 'GBM',
+): string {
   const investments = connectedData?.investments ?? demoInvestments;
   const viewModel = presentPortfolio(
     investments,
     Boolean(connectedData),
-    connectedData?.gainSummaryText,
+    provider,
   );
   return renderPortfolioTemplate(viewModel);
 }
