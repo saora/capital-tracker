@@ -36,32 +36,24 @@ function formatCurrencyAmount(value: number, currency: "MXN" | "USD"): string {
   return formatCurrency(Math.abs(value), currency);
 }
 
-function parseGainSummaryValue(value?: string): number | undefined {
-  if (!value?.trim()) return undefined;
-
-  const text = value.trim();
-  const isParenthesizedNegative = /^\(.*\)$/.test(text);
-  const normalized = text
-    .replace(/[()$€£,\s]/g, "")
-    .replace(/[^\d.+-]/g, "");
-  const parsed = Number(normalized);
-
-  if (!Number.isFinite(parsed)) return undefined;
-  return isParenthesizedNegative ? -Math.abs(parsed) : parsed;
-}
+export type PortfolioProvider = "GBM" | "BITSO" | "BANCO";
 
 export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
-  gainSummaryText?: string,
+  provider: PortfolioProvider = "GBM",
 ): PortfolioViewModel {
-  const positions: PortfolioPosition[] = investments
-    .filter(
-      (item) =>
-        item.assetType === "stock" ||
-        item.assetType === "etf" ||
-        item.assetType === "crypto",
-    )
+  const selectedInvestments = investments.filter((item) => {
+    if (provider === "BANCO") {
+      return item.assetType === "fixed-income" || item.assetType === "bank-account";
+    }
+
+    const location = (item.location ?? "").trim().toLocaleUpperCase("es-MX");
+    return location === provider &&
+      (item.assetType === "stock" || item.assetType === "etf" || item.assetType === "crypto");
+  });
+
+  const positions: PortfolioPosition[] = selectedInvestments
     .map((item) => {
       const value = item.quantity * item.currentPrice;
       const cost = item.quantity * item.averageCost;
@@ -143,15 +135,8 @@ export function presentPortfolio(
   const investedValue = positions.reduce((total, position) => total + position.investedValue, 0);
   const totalGain = totalValue - investedValue;
   const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
-  const sheetGainValue = parseGainSummaryValue(gainSummaryText);
-  const totalPerformanceLabel =
-    sheetGainValue !== undefined && investedValue > 0
-      ? formatPercent((sheetGainValue / investedValue) * 100)
-      : formatPercent(totalPerformance);
-  const totalGainAmountLabel =
-    sheetGainValue !== undefined
-      ? formatCurrency(sheetGainValue, currency)
-      : formatCurrencyAmount(totalGain, currency);
+  const totalPerformanceLabel = formatPercent(totalPerformance).replace(/^\+/, "");
+  const totalGainAmountLabel = formatCurrencyAmount(totalGain, currency);
 
   return {
     positions,
@@ -161,6 +146,7 @@ export function presentPortfolio(
     totalPerformanceLabel,
     totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,
+    provider,
     disclaimer: connected
       ? "Posiciones obtenidas de Google Sheets. Los valores reflejan la última información guardada en la hoja."
       : "Datos ficticios. Los valores están en la moneda indicada por activo.",
