@@ -43,6 +43,7 @@ export async function getCatalog(token: string): Promise<CatalogAsset[]> {
 
 export type MovementCategory = "Cuenta bancaria" | "Acciones";
 export type MovementType = "Entrada" | "Salida";
+export type MovementOrigin = "GBM" | "Bitso";
 
 export interface Movement {
   id: string;
@@ -57,6 +58,7 @@ export interface Movement {
   averageCost?: number;
   commission?: number;
   currency: Currency;
+  origin?: MovementOrigin;
 }
 
 type SheetRow = Array<string | number | boolean | null>;
@@ -143,6 +145,9 @@ export async function getMovements(token: string): Promise<Movement[]> {
       quantity: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
       averageCost,
       currency: (String(row[7] ?? "MXN").trim() || "MXN") as Currency,
+      origin: ["GBM", "Bitso"].includes(String(row[14] ?? "").trim())
+        ? String(row[14]).trim() as MovementOrigin
+        : undefined,
     };
   }).filter((movement) => movement.id && movement.date && movement.account)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -175,6 +180,7 @@ export async function appendMovement(
         movement.amount,                     // L: Importe
         movement.commission ?? "",           // M: Comision
         movement.notes,                      // N: Notas
+        movement.origin ?? "",                // O: Origen
       ]],
     }),
   });
@@ -192,7 +198,7 @@ async function findMovementRow(token: string, id: string): Promise<number> {
 }
 export async function updateMovement(token: string, movement: Omit<Movement, "currency"> & { currency?: Currency }): Promise<void> {
   const row = await findMovementRow(token, movement.id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:O${row}`));
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   await sheetsRequest(token, url.toString(), {
     method: "PUT",
@@ -213,12 +219,13 @@ export async function updateMovement(token: string, movement: Omit<Movement, "cu
         movement.amount,
         movement.commission ?? "",
         movement.notes,
+        movement.origin ?? "",
       ]],
     }),
   });
 }
 export async function deleteMovement(token: string, id: string): Promise<void> {
   const row = await findMovementRow(token, id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`) + ":clear");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:O${row}`) + ":clear");
   await sheetsRequest(token, url.toString(), { method: "POST", body: JSON.stringify({}) });
 }
