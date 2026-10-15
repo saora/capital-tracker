@@ -117,7 +117,7 @@ function parseSheetDate(value: unknown): string {
 }
 
 export async function getMovements(token: string): Promise<Movement[]> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:O`));
   url.searchParams.set("majorDimension", "ROWS");
   url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
