@@ -582,6 +582,11 @@
   padding: var(--space-4) var(--space-4) 0;
 }
 
+.portfolio-filter-header--outside {
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
 .portfolio-provider-filter {
   display: flex;
   justify-content: center;
