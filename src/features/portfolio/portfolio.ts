@@ -10,7 +10,10 @@ export function renderPortfolio(
   connectedData?: InvestmentSheetsData,
   provider: PortfolioProvider = 'GBM',
 ): string {
-  const investments = connectedData?.investments ?? demoInvestments;
+  const investments = connectedData?.investments ?? demoInvestments.map((item) => ({
+    ...item,
+    location: item.symbol === 'BTC' ? 'BITSO' : 'GBM',
+  }));
   const viewModel = presentPortfolio(
     investments,
     Boolean(connectedData),
