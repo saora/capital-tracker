@@ -113,11 +113,11 @@ export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
         </div>
       </section>
 
+      <header class="portfolio-filter-header portfolio-filter-header--outside">
+        <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
+        <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
+      </header>
       <section class="card portfolio-location-card" aria-labelledby="portfolio-positions-title">
-        <header class="portfolio-filter-header">
-          <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
-          <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
-        </header>
         <div class="chart-periods portfolio-provider-filter" role="group" aria-label="Filtrar portafolio">
           ${renderProviderFilter(viewModel.provider)}
         </div>
