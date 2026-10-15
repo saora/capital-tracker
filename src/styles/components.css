@@ -587,7 +587,7 @@
   justify-content: center;
   width: fit-content;
   max-width: calc(100% - 2 * var(--space-4));
-  margin: var(--space-3) auto var(--space-2);
+  margin: 0 auto;
 }
 
 .portfolio-provider-filter .chart-period {
