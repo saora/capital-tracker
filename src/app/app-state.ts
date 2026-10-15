@@ -1,5 +1,6 @@
 import type { AppRoute } from '../types/navigation';
 import type { PerformancePeriod } from '../types/portfolio';
+import type { PortfolioProvider } from '../features/portfolio/portfolio.types';
 import type { InvestmentSheetsData } from '../services/google-sheets.service';
 import type { Movement, CatalogAsset } from '../services/movements.service';
 
@@ -12,6 +13,7 @@ export interface AppState {
   movements: Movement[];
   catalog: CatalogAsset[];
   movementPeriod: MovementPeriod;
+  selectedPortfolioProvider: PortfolioProvider;
   isConnecting: boolean;
   isAuthLoading: boolean;
   connectionError: string;
@@ -29,6 +31,7 @@ export const appState: AppState = {
   movements: [],
   catalog: [],
   movementPeriod: '1M',
+  selectedPortfolioProvider: 'GBM',
   isConnecting: false,
   isAuthLoading: false,
   connectionError: '',
