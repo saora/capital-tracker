@@ -585,9 +585,9 @@
 .portfolio-provider-filter {
   display: flex;
   justify-content: center;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  width: calc(100% - 2 * var(--space-4));
+  max-width: calc(100% - 2 * var(--space-4));
+  margin: 0 var(--space-4);
 }
 
 .portfolio-provider-filter .chart-period {
