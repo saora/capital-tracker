@@ -567,3 +567,26 @@
     font-size: 0.8125rem;
   }
 }
+
+
+/* Selector de plataforma del portafolio */
+.portfolio-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.portfolio-provider-filter {
+  margin: var(--space-3) var(--space-4) var(--space-2);
+  width: calc(100% - 2 * var(--space-4));
+}
+
+.portfolio-location-card__holdings {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.portfolio-location-card__holdings .holdings-empty {
+  margin: var(--space-3) 0;
+}
