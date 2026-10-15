@@ -115,7 +115,7 @@ export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
 
       <section class="card portfolio-location-card" aria-labelledby="portfolio-positions-title">
         <header class="portfolio-filter-header">
-          <h2 class="dashboard__section-title" id="portfolio-positions-title">${escapeHtml(viewModel.provider === 'BANCO' ? 'Activos bancarios' : `Portafolio ${viewModel.provider}`)}</h2>
+          <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
           <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
         </header>
         <div class="chart-periods portfolio-provider-filter" role="group" aria-label="Filtrar portafolio">
