@@ -570,6 +570,10 @@
 
 
 /* Selector de plataforma del portafolio */
+.portfolio-location-card {
+  padding: 0;
+}
+
 .portfolio-filter-header {
   display: flex;
   align-items: center;
