@@ -1,6 +1,6 @@
 import type { Investment } from "../../types/investment";
 import { formatCurrency, formatPercent } from "../../utils/formatters";
-import type { PortfolioPosition, PortfolioViewModel } from "./portfolio.types";
+import type { PortfolioPosition, PortfolioProvider, PortfolioViewModel } from "./portfolio.types";
 
 function formatMarketPrice(value: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
@@ -35,8 +35,6 @@ function formatDailyChange(value: number | null | undefined): string {
 function formatCurrencyAmount(value: number, currency: "MXN" | "USD"): string {
   return formatCurrency(Math.abs(value), currency);
 }
-
-export type PortfolioProvider = "GBM" | "BITSO" | "BANCO";
 
 export function presentPortfolio(
   investments: Investment[],
