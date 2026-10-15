@@ -1,4 +1,4 @@
-import type { PortfolioViewModel, PortfolioPosition } from './portfolio.types';
+import type { PortfolioViewModel, PortfolioPosition, PortfolioProvider } from './portfolio.types';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
 import { presentAssetLogo } from '../../components/asset-logo/asset-logo.presenter';
 import { renderAssetLogoTemplate } from '../../components/asset-logo/asset-logo.template';
@@ -12,7 +12,6 @@ function escapeHtml(value: string): string {
       '"': '&quot;',
       "'": '&#39;',
     };
-
     return entities[character];
   });
 }
@@ -21,141 +20,76 @@ function formatCurrencyAmount(value: number, currency: PortfolioPosition['curren
   return formatCurrency(Math.abs(value), currency);
 }
 
-export function renderPortfolioTemplate(
-  viewModel: PortfolioViewModel,
-): string {
-  const totalPortfolioValue = viewModel.positions.reduce(
-    (total, position) => total + position.currentValue,
-    0,
-  );
-  const positionsByLocation = new Map<string, PortfolioPosition[]>();
+const providers: PortfolioProvider[] = ['GBM', 'BITSO', 'BANCO'];
 
-  viewModel.positions.forEach((position) => {
-    const location = position.location || 'Sin ubicación';
-    const group = positionsByLocation.get(location) ?? [];
-    group.push(position);
-    positionsByLocation.set(location, group);
-  });
+function renderProviderFilter(selected: PortfolioProvider): string {
+  return providers.map((provider) => `
+    <button
+      type="button"
+      class="chart-period${provider === selected ? ' chart-period--active' : ''}"
+      data-portfolio-provider="${provider}"
+      aria-pressed="${provider === selected}"
+    >${provider}</button>
+  `).join('');
+}
 
-  const positionsHtml = Array.from(positionsByLocation.entries())
-    .map(([location, groupedPositions]) => {
-      // Sort by portfolio weight (equivalent to current value because all positions share the same portfolio denominator).
-      const positions = [...groupedPositions].sort(
-        (a, b) => b.currentValue - a.currentValue,
-      );
-      const rowsHtml = positions
-        .map((position) => {
-          const logoViewModel = presentAssetLogo({
-            symbol: position.symbol,
-            name: position.name,
-            size: 'md',
-            category: 'ticker',
-          });
+export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
+  const positions = [...viewModel.positions].sort((a, b) => b.currentValue - a.currentValue);
+  const rowsHtml = positions.map((position) => {
+    const isBankAsset = position.assetType === 'fixed-income' || position.assetType === 'bank-account';
+    const logoViewModel = presentAssetLogo({
+      symbol: position.symbol,
+      name: position.name,
+      size: 'md',
+      category: isBankAsset ? 'bank' : 'ticker',
+    });
+    const logoHtml = renderAssetLogoTemplate(logoViewModel);
+    const quoteHtml = isBankAsset
+      ? `<span class="portfolio-holding__quote"><span>${position.assetType === 'fixed-income' ? 'Renta fija' : 'Cuenta bancaria'}</span></span>`
+      : `<span class="portfolio-holding__quote">
+          <span class="${position.dailyChangeClass}">${escapeHtml(position.dailyChangeLabel)}</span>
+          <span aria-hidden="true">·</span>
+          <span>${escapeHtml(position.currentPriceLabel)}</span>
+        </span>`;
 
-          const logoHtml = renderAssetLogoTemplate(logoViewModel);
-
-          return `
-            <article class="holding-row">
-              <div class="holding-row__identity">
-                ${logoHtml}
-
-                <div class="holding-row__name">
-                  <strong>${escapeHtml(position.symbol)}</strong>
-
-                  <span class="portfolio-holding__quote">
-                    <span class="${position.dailyChangeClass}">
-                      ${escapeHtml(position.dailyChangeLabel)}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>${escapeHtml(position.currentPriceLabel)}</span>
-                  </span>
-                </div>
-              </div>
-
-              <div class="holding-row__numbers">
-                <div class="holding-row__value-line">
-                  <span class="holding-row__quantity">${escapeHtml(position.quantityLabel)}</span>
-                  <span class="holding-row__value-separator" aria-hidden="true">·</span>
-                  <strong>${escapeHtml(position.valueLabel)}</strong>
-                </div>
-
-                <span class="portfolio-holding__gain ${position.gainClass}">
-                  <span class="portfolio-holding__gain-percent"><span aria-hidden="true">${escapeHtml(position.gainArrow)}</span> ${escapeHtml(position.gainPercentLabel)}</span>
-                  <strong aria-hidden="true">·</strong>
-                  <strong>${escapeHtml(position.gainAmountLabel)}</strong>
-                </span>
-              </div>
-            </article>
-          `;
-        })
-        .join('');
-
-      const invested = positions.reduce((total, position) => total + position.investedValue, 0);
-      const currentValue = positions.reduce((total, position) => total + position.currentValue, 0);
-      const gain = positions.reduce((total, position) => total + position.gainValue, 0);
-      const performance = invested > 0 ? (gain / invested) * 100 : 0;
-      const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
-      const amountLabel = formatCurrencyAmount(gain, viewModel.currency);
-      const signedAmountLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${amountLabel}`;
-      const currentValueLabel = formatCurrency(currentValue, viewModel.currency);
-      const locationId = location.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const normalizedLocation = location.toLowerCase();
-      const isBrokerage = normalizedLocation === 'gbm' || normalizedLocation === 'bitso';
-      const performanceLabel = isBrokerage
-        ? formatPercent(Math.abs(performance)).replace(/^\+/, '')
-        : formatPercent(performance);
-      const gainArrow = gain > 0 ? '↗' : gain < 0 ? '↘' : '→';
-      const portfolioWeight = totalPortfolioValue > 0
-        ? (currentValue / totalPortfolioValue) * 100
-        : 0;
-      const portfolioWeightLabel = formatPercent(portfolioWeight);
-      const portfolioWeightHtml = isBrokerage
-        ? `<span class="portfolio-location-card__weight">PESO: ${escapeHtml(portfolioWeightLabel)}</span>`
-        : '';
-      const brokerLogo = isBrokerage
-        ? `<span class="portfolio-location-card__logo"><img src="${import.meta.env.BASE_URL}logos/holdings/${normalizedLocation}.svg" alt="" aria-hidden="true" loading="lazy" decoding="async" /></span>`
-        : '';
-      const countBadge = isBrokerage
-        ? `<span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>`
-        : '';
-
-      return `
-        <section class="card portfolio-location-card" aria-labelledby="portfolio-location-${escapeHtml(locationId)}">
-          <header class="portfolio-location-card__header holding-row">
-            <div class="portfolio-location-card__identity">
-              ${brokerLogo}
-              <div class="portfolio-location-card__name">
-                <div class="portfolio-location-card__title-line">
-                  <h3
-                    class="dashboard__section-title portfolio-location-card__title"
-                    id="portfolio-location-${escapeHtml(locationId)}">
-                    ${escapeHtml(location)}
-                  </h3>
-                  ${countBadge}
-                </div>
-                ${portfolioWeightHtml}
-              </div>
-            </div>
-            <div class="portfolio-location-card__numbers">
-              <strong class="portfolio-location-card__value">${escapeHtml(currentValueLabel)}</strong>
-              <div class="portfolio-location-card__performance">
-                ${isBrokerage
-                  ? `<span class="portfolio-location-card__return portfolio-location-card__return--brokerage ${gainClass}"><span aria-hidden="true">${gainArrow}</span> ${escapeHtml(performanceLabel)}</span><strong class="portfolio-location-card__separator" aria-hidden="true">·</strong><strong class="portfolio-location-card__gain portfolio-location-card__gain--brokerage ${gainClass}">${escapeHtml(amountLabel)}</strong>`
-                  : `<span class="portfolio-location-card__gain ${gainClass}">${escapeHtml(signedAmountLabel)}</span><span class="portfolio-location-card__return ${gainClass}">${escapeHtml(performanceLabel)}</span>`}
-              </div>
-            </div>
-          </header>
-          <div class="portfolio-location-card__holdings">
-            ${rowsHtml}
+    return `
+      <article class="holding-row">
+        <div class="holding-row__identity">
+          ${logoHtml}
+          <div class="holding-row__name">
+            <strong>${escapeHtml(position.symbol)}</strong>
+            ${quoteHtml}
           </div>
-        </section>
-      `;
-    })
-    .join('');
+        </div>
+        <div class="holding-row__numbers">
+          <div class="holding-row__value-line">
+            <span class="holding-row__quantity">${escapeHtml(position.quantityLabel)}</span>
+            <span class="holding-row__value-separator" aria-hidden="true">·</span>
+            <strong>${escapeHtml(position.valueLabel)}</strong>
+          </div>
+          <span class="portfolio-holding__gain ${position.gainClass}">
+            <span class="portfolio-holding__gain-percent"><span aria-hidden="true">${escapeHtml(position.gainArrow)}</span> ${escapeHtml(position.gainPercentLabel)}</span>
+            <strong aria-hidden="true">·</strong>
+            <strong>${escapeHtml(position.gainAmountLabel)}</strong>
+          </span>
+        </div>
+      </article>
+    `;
+  }).join('');
 
+  const currentValue = positions.reduce((total, position) => total + position.currentValue, 0);
+  const gain = positions.reduce((total, position) => total + position.gainValue, 0);
+  const invested = positions.reduce((total, position) => total + position.investedValue, 0);
+  const performance = invested > 0 ? (gain / invested) * 100 : 0;
+  const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
+  const signedGainLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${formatCurrencyAmount(gain, viewModel.currency)}`;
+  const performanceLabel = formatPercent(performance).replace(/^\+/, '');
+  const emptyMessage = viewModel.provider === 'BANCO'
+    ? 'No hay activos bancarios registrados.'
+    : `No hay posiciones registradas en ${viewModel.provider}.`;
 
   return `
-    <section class="dashboard">
+    <section class="dashboard portfolio-page">
       <header class="page-header">
         <div>
           <p class="dashboard__greeting">Consulta tus activos</p>
@@ -168,33 +102,31 @@ export function renderPortfolioTemplate(
           <p class="dashboard__balance-label">Valor del portafolio</p>
           <span class="currency-tag">${escapeHtml(viewModel.currency)}</span>
         </div>
-        <p class="dashboard__balance-value">
-          ${escapeHtml(viewModel.totalValueLabel)}
-        </p>
+        <p class="dashboard__balance-value">${escapeHtml(formatCurrency(currentValue, viewModel.currency))}</p>
         <div class="portfolio-summary-card__performance">
           <span class="portfolio-summary-card__label">Ganancia total</span>
-          <strong class="${viewModel.totalGainClass} portfolio-summary-card__gain">
-            <span class="portfolio-summary-card__gain-percent">${escapeHtml(viewModel.totalPerformanceLabel)}</span>
+          <strong class="${gainClass} portfolio-summary-card__gain">
+            <span class="portfolio-summary-card__gain-percent">${escapeHtml(performanceLabel)}</span>
             <span aria-hidden="true">·</span>
-            <span>${escapeHtml(viewModel.totalGainAmountLabel)}</span>
+            <span>${escapeHtml(signedGainLabel)}</span>
           </strong>
         </div>
       </section>
 
-      <section class="dashboard__section">
-        <h2 class="dashboard__section-title">Acciones y ETF</h2>
-
-        <div class="portfolio-location-list">
-          ${
-            positionsHtml ||
-            '<div class="card"><p class="holdings-empty">No hay acciones ni ETF registrados.</p></div>'
-          }
+      <header class="portfolio-filter-header portfolio-filter-header--outside">
+        <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
+        <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
+      </header>
+      <section class="card portfolio-location-card" aria-labelledby="portfolio-positions-title">
+        <div class="chart-periods portfolio-provider-filter" role="group" aria-label="Filtrar portafolio">
+          ${renderProviderFilter(viewModel.provider)}
+        </div>
+        <div class="portfolio-location-card__holdings">
+          ${rowsHtml || `<p class="holdings-empty">${escapeHtml(emptyMessage)}</p>`}
         </div>
       </section>
 
-      <p class="demo-disclaimer">
-        ${escapeHtml(viewModel.disclaimer)}
-      </p>
+      <p class="demo-disclaimer">${escapeHtml(viewModel.disclaimer)}</p>
     </section>
   `;
 }

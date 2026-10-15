@@ -96,6 +96,7 @@ export function renderPage(app: HTMLDivElement): void {
         ? renderSkeletonLoader('portfolio')
         : renderPortfolio(
             appState.investmentData ?? undefined,
+            appState.selectedPortfolioProvider,
           );
       break;
 

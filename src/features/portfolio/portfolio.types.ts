@@ -24,7 +24,10 @@ export interface PortfolioPosition {
   gainClass: 'text-positive' | 'text-negative';
 }
 
+export type PortfolioProvider = 'GBM' | 'BITSO' | 'BANCO';
+
 export interface PortfolioViewModel {
+  provider: PortfolioProvider;
   positions: PortfolioPosition[];
   totalPositions: number;
   totalValueLabel: string;

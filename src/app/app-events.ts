@@ -221,6 +221,15 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
       if (action === "google-logout") { handlers.onLogout(); return; }
     }
     if (!appStateHasSession()) return;
+    const portfolioProviderElement = target.closest<HTMLButtonElement>("[data-portfolio-provider]");
+    if (portfolioProviderElement) {
+      const provider = portfolioProviderElement.dataset.portfolioProvider;
+      if (provider === "GBM" || provider === "BITSO" || provider === "BANCO") {
+        appState.selectedPortfolioProvider = provider;
+        renderPage(app);
+      }
+      return;
+    }
     const chartPoint = target.closest<HTMLElement>("[data-chart-point]");
     if (chartPoint) { selectChartPoint(chartPoint); return; }
     const periodElement = target.closest<HTMLElement>("[data-performance-period]");
