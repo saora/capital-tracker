@@ -577,7 +577,6 @@
 .portfolio-filter-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-4) 0;
 }
@@ -587,12 +586,12 @@
   margin-bottom: var(--space-3);
 }
 
-.portfolio-provider-filter {
+.chart-periods.portfolio-provider-filter {
   display: flex;
   justify-content: center;
   width: calc(100% - 2 * var(--space-4));
   max-width: calc(100% - 2 * var(--space-4));
-  margin: 0 auto;
+  margin: 0 auto var(--space-4);
 }
 
 .portfolio-provider-filter .chart-period {
