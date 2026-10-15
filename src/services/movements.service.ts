@@ -157,7 +157,7 @@ export async function appendMovement(
   token: string,
   movement: Omit<Movement, "currency"> & { currency?: Currency },
 ): Promise<void> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`) + ":append");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:O`) + ":append");
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   url.searchParams.set("insertDataOption", "INSERT_ROWS");
 
