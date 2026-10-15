@@ -14,6 +14,7 @@ import {
 import { renderPage } from "./app-renderer";
 import { connectGoogleSheets } from "./app-refresh";
 import { appendMovement, deleteMovement, getMovements, updateMovement } from "../services/movements.service";
+import type { MovementOrigin } from "../services/movements.service";
 import { GoogleApiError, GOOGLE_SHEETS_RATE_LIMIT_MESSAGE } from "../services/google-api-error.service";
 import { closeAccountMenu } from "./session-menu";
 
@@ -429,7 +430,7 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     target.dataset.submitting = "true"; if (submitButton) submitButton.disabled = true; if (status) { status.textContent = "Guardando en Google Sheets…"; status.className = "movement-form__status movement-field--full"; }
     void (async () => {
       try {
-        const editId = target.dataset.editId; const originValue = String(formData.get("origin") ?? ""); const origin = originValue === "GBM" || originValue === "Bitso" ? originValue : undefined; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade ? { commission, currency } : { currency: "MXN" as const }), ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}), ...(isBuy && origin ? { origin } : {}) };
+        const editId = target.dataset.editId; const originValue = String(formData.get("origin") ?? ""); const origin: MovementOrigin | undefined = originValue === "GBM" ? "GBM" : originValue === "Bitso" ? "Bitso" : undefined; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade ? { commission, currency } : { currency: "MXN" as const }), ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}), ...(isBuy && origin ? { origin } : {}) };
         if (editId) { await updateMovement(token, savedMovement); appState.movements = appState.movements.map((item) => item.id === editId ? savedMovement : item).sort((a, b) => b.date.localeCompare(a.date)); }
         else { await appendMovement(token, savedMovement); appState.movements = [savedMovement, ...appState.movements].sort((a, b) => b.date.localeCompare(a.date)); }
         try { appState.movements = await getMovements(token); } catch { /* append already confirmed; keep local record */ }
