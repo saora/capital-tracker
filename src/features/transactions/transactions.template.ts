@@ -68,7 +68,6 @@ export function renderMovement(movement: Movement): string {
       typeof movement.realizedCostBasis === 'number' &&
       typeof movement.realizedNetProceeds === 'number'
       ? [
-          `<div><span>Ingreso neto de venta</span><strong>${escapeHtml(formatCurrency(movement.realizedNetProceeds, movement.currency))}</strong></div>`,
           `<div><span>Costo de los títulos vendidos</span><strong>${escapeHtml(formatCurrency(movement.realizedCostBasis, movement.currency))}</strong></div>`,
           `<div><span>Ganancia realizada</span><strong class="movement-row__amount ${movement.realizedGain >= 0 ? 'is-incoming' : 'is-outgoing'}">${movement.realizedGain > 0 ? '+' : movement.realizedGain < 0 ? '−' : ''}${escapeHtml(formatCurrency(Math.abs(movement.realizedGain), movement.currency))}</strong></div>`,
         ]
