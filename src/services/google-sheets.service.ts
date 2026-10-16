@@ -78,13 +78,6 @@ interface ParsedInvestment {
   currentValue: number;
 }
 
-interface MovementPosition {
-  symbol: string;
-  provider: MovementProvider;
-  quantity: number;
-  costBasis: number;
-}
-
 function makeInvestment(
   id: string,
   symbol: string,
@@ -168,146 +161,60 @@ function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
   return assetLocations;
 }
 
-/**
- * Reads current quotes from Renta variable and derives quantities/remaining
- * cost basis from Movimientos, with each position assigned to its broker.
- */
-function parseCurrentPrices(rows: SheetRow[]): Map<string, { price: number; dailyChangePercent: number }> {
-  const prices = new Map<string, { price: number; dailyChangePercent: number }>();
-  rows.slice(1).forEach((row) => {
-    const symbol = String(row[0] ?? "").trim();
-    const currentValue = toNumber(row[10]);
-    const quantity = toNumber(row[7]);
-    if (!symbol || quantity <= 0 || currentValue <= 0) return;
-    prices.set(normalize(symbol), {
-      price: currentValue / quantity,
-      dailyChangePercent: toNumber(row[4]) * 100,
-    });
-  });
-  return prices;
-}
-
-function parseMovementPositions(
+function parseVariableIncome(
   rows: SheetRow[],
-  assetLocations: Map<string, string>,
-): Map<string, MovementPosition> {
-  const sorted = rows.slice(1)
-    .filter((row) => String(row[0] ?? "").trim() && String(row[4] ?? "").trim())
-    .map((row) => {
-      const symbol = String(row[4] ?? "").trim();
+  activeAssets: Map<string, string>,
+  portfolioControlRows: SheetRow[],
+): ParsedInvestment[] {
+  const activeSymbols = new Set(
+    portfolioControlRows
+      .filter((row) => normalize(row[2]) === "activo")
+      .map((row) => normalize(row[0]))
+      .filter(Boolean),
+  );
+
+  return rows
+    .slice(1)
+    .map((row, index) => {
+      const symbol = String(row[0] ?? "").trim();
+      const normalizedSymbol = normalize(symbol);
+      const invested = toNumber(row[9]);
+      const currentValue = toNumber(row[10]);
+      const quantity = toNumber(row[7]);
+      const dailyChangePercent = toNumber(row[4]) * 100;
+      const location = activeAssets.get(normalizedSymbol);
+      const provider = normalizeProvider(location);
+
+      if (
+        !symbol ||
+        ["total", "total general", "subtotal"].includes(normalizedSymbol) ||
+        !activeSymbols.has(normalizedSymbol) ||
+        !["GBM", "BITSO"].includes(provider) ||
+        quantity <= 0 ||
+        (invested === 0 && currentValue === 0)
+      ) {
+        return null;
+      }
+
       return {
-        id: String(row[0] ?? "").trim(),
-        date: String(row[1] ?? ""),
-        direction: normalize(row[2]),
-        type: normalize(row[3]),
-        symbol,
-        provider: resolveMovementProvider(row[14], symbol, assetLocations),
-        concept: normalize(row[5]),
-        quantity: toNumber(row[9]),
-        amount: toNumber(row[11]),
-        commission: toNumber(row[12]),
+        investment: {
+          ...makeInvestment(
+            `variable-${index}-${normalizedSymbol}`,
+            symbol.toUpperCase(),
+            symbol.toUpperCase(),
+            getAssetType(symbol),
+            invested,
+            currentValue,
+            quantity,
+          ),
+          location: provider,
+          dailyChangePercent,
+        },
+        invested,
+        currentValue,
       };
     })
-    .filter((row) => row.type.includes("accion") || row.type.includes("invers"))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const positions = new Map<string, MovementPosition>();
-
-  for (const movement of sorted) {
-    if (!movement.provider) {
-      throw new Error(
-        `El movimiento ${movement.id} (${movement.symbol}) no tiene origen GBM/Bitso y no se puede asignar a un portafolio. Completa la columna O (Origen) de "Movimientos" o la ubicación en "Portfolio".`,
-      );
-    }
-    const key = `${movement.provider}:${normalize(movement.symbol)}`;
-    const current = positions.get(key) ?? {
-      symbol: movement.symbol.toUpperCase(),
-      provider: movement.provider,
-      quantity: 0,
-      costBasis: 0,
-    };
-    const quantity = Math.max(0, movement.quantity);
-
-    if (movement.direction === "entrada") {
-      if (movement.concept === "compra" && quantity > 0) {
-        current.costBasis += movement.amount + movement.commission;
-        current.quantity += quantity;
-      }
-    } else if (movement.direction === "salida" && quantity > 0) {
-      if (movement.concept === "venta" && current.quantity > 0) {
-        const soldQuantity = Math.min(quantity, current.quantity);
-        const averageCost = current.costBasis / current.quantity;
-        const allocatedCost = averageCost * soldQuantity;
-        current.costBasis = Math.max(0, current.costBasis - allocatedCost);
-        current.quantity = Math.max(0, current.quantity - soldQuantity);
-      } else {
-        const removedQuantity = Math.min(quantity, current.quantity);
-        const averageCost = current.quantity > 0 ? current.costBasis / current.quantity : 0;
-        current.costBasis = Math.max(0, current.costBasis - averageCost * removedQuantity);
-        current.quantity = Math.max(0, current.quantity - removedQuantity);
-      }
-    }
-
-    positions.set(key, current);
-  }
-
-  return positions;
-}
-
-/**
- * Capital variable neto = entradas menos salidas de GBM y Bitso.
- * Las comisiones de compra aumentan el capital aportado y las de venta
- * reducen el efectivo recuperado.
- */
-interface NetInvestmentBreakdown {
-  GBM: number;
-  BITSO: number;
-  total: number;
-}
-
-function calculateNetInvestmentFromMovements(
-  rows: SheetRow[],
-  assetLocations: Map<string, string>,
-): NetInvestmentBreakdown {
-  const netByProvider = new Map<MovementProvider, number>([
-    ["GBM", 0],
-    ["BITSO", 0],
-  ]);
-  const unassigned: string[] = [];
-
-  rows.slice(1).forEach((row) => {
-    const type = normalize(row[3]);
-    if (!type.includes("accion") && !type.includes("invers")) return;
-
-    const id = String(row[0] ?? "").trim();
-    const symbol = String(row[4] ?? "").trim();
-    if (!id || !symbol) return;
-    const provider = resolveMovementProvider(row[14], symbol, assetLocations);
-    if (!provider) {
-      unassigned.push(`${id} (${symbol})`);
-      return;
-    }
-
-    const direction = normalize(row[2]);
-    const amount = toNumber(row[11]);
-    const commission = toNumber(row[12]);
-    const signedAmount = direction === "entrada"
-      ? amount + commission
-      : direction === "salida"
-        ? -(amount - commission)
-        : 0;
-    netByProvider.set(provider, (netByProvider.get(provider) ?? 0) + signedAmount);
-  });
-
-  if (unassigned.length > 0) {
-    throw new Error(
-      `Hay movimientos de inversión sin origen GBM/Bitso: ${unassigned.slice(0, 5).join(", ")}. Completa la columna O (Origen) de "Movimientos" para poder calcular el capital invertido correctamente.`,
-    );
-  }
-
-  const GBM = netByProvider.get("GBM") ?? 0;
-  const BITSO = netByProvider.get("BITSO") ?? 0;
-  return { GBM, BITSO, total: GBM + BITSO };
+    .filter((item) => item !== null);
 }
 
 export async function getInvestmentSheetsData(
@@ -324,42 +231,10 @@ export async function getInvestmentSheetsData(
 
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
-  const currentPrices = parseCurrentPrices(variableRows);
   const netVariableInvestment = calculateNetInvestmentFromMovements(movementRows, activeAssets);
-  const movementPositions = parseMovementPositions(movementRows, activeAssets);
-
-  const variableIncome: ParsedInvestment[] = [...movementPositions.values()]
-    .filter((position) => position.quantity > 0.0000001)
-    .map((position) => {
-      const market = currentPrices.get(normalize(position.symbol));
-      if (!market) {
-        throw new Error(
-          `No hay precio actual disponible para ${position.symbol} en "Renta variable". No se puede calcular el valor del portafolio con seguridad.`,
-        );
-      }
-
-      const invested = position.costBasis;
-      const currentValue = position.quantity * market.price;
-      const location = position.provider;
-
-      return {
-        investment: {
-          ...makeInvestment(
-            `movement-${normalize(position.symbol)}`,
-            position.symbol,
-            position.symbol,
-            getAssetType(position.symbol),
-            invested,
-            currentValue,
-            position.quantity,
-          ),
-          location,
-          dailyChangePercent: market.dailyChangePercent,
-        },
-        invested,
-        currentValue,
-      };
-    });
+  // Current values and per-position gains must match the GBM/Bitso portfolio
+  // data shown in Renta variable; Movimientos is used for net invested capital.
+  const variableIncome = parseVariableIncome(variableRows, activeAssets, portfolioControlRows);
 
   const parsedInvestments = [...fixedIncome, ...variableIncome];
   if (parsedInvestments.length === 0) {
