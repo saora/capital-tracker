@@ -147,6 +147,7 @@ export function presentPortfolio(
     positions,
     totalPositions: positions.length,
     totalValueLabel: formatCurrency(totalValue, currency),
+    totalInvestedValue: investedValue,
     totalGainAmountLabel,
     totalGainValue: totalGain,
     totalPerformanceLabel,
