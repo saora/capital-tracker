@@ -114,6 +114,10 @@ export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
       <header class="portfolio-filter-header portfolio-filter-header--outside">
         <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
         <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
+        <span class="portfolio-filter-header__capital">
+          <span>Cap. invertido:</span>
+          <strong>${escapeHtml(formatCurrency(viewModel.totalInvestedValue, viewModel.currency))}</strong>
+        </span>
       </header>
       <section class="card portfolio-location-card" aria-labelledby="portfolio-positions-title">
         <div class="chart-periods portfolio-provider-filter" role="group" aria-label="Filtrar portafolio">
