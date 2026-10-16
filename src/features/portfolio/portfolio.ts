@@ -14,10 +14,16 @@ export function renderPortfolio(
     ...item,
     location: item.symbol === 'BTC' ? 'BITSO' : 'GBM',
   }));
+  const providerInvestedCapital = provider === 'GBM'
+    ? connectedData?.entryCapitalByProvider?.GBM
+    : provider === 'BITSO'
+      ? connectedData?.entryCapitalByProvider?.BITSO
+      : undefined;
   const viewModel = presentPortfolio(
     investments,
     Boolean(connectedData),
     provider,
+    providerInvestedCapital,
   );
   return renderPortfolioTemplate(viewModel);
 }
