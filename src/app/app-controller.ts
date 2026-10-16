@@ -72,6 +72,7 @@ export async function handleGoogleLogout(
     appState.googleSheetsRetryAfter = null;
     appState.activeRoute = 'dashboard';
     appState.activePeriod = '1M';
+    appState.selectedPortfolioProvider = 'GBM';
     appState.connectionError = '';
   } catch (error) {
     appState.connectionError =

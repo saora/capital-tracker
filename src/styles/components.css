@@ -567,3 +567,42 @@
     font-size: 0.8125rem;
   }
 }
+
+
+/* Selector de plataforma del portafolio */
+.portfolio-location-card {
+  padding: 0;
+}
+
+.portfolio-filter-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.portfolio-filter-header--outside {
+  padding: 0;
+  margin-bottom: var(--space-3);
+}
+
+.chart-periods.portfolio-provider-filter {
+  display: flex;
+  justify-content: center;
+  width: calc(100% - 2 * var(--space-4));
+  max-width: calc(100% - 2 * var(--space-4));
+  margin: var(--space-3) auto var(--space-4);
+}
+
+.portfolio-provider-filter .chart-period {
+  flex: 0 0 auto;
+  min-width: 4.25rem;
+}
+
+.portfolio-location-card__holdings {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.portfolio-location-card__holdings .holdings-empty {
+  margin: var(--space-3) 0;
+}
