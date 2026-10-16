@@ -4,17 +4,26 @@ import { demoInvestments } from '../../services/investment-service';
 import { presentPortfolio } from './portfolio.presenter';
 import { renderPortfolioTemplate } from './portfolio.template';
 
-export function renderPortfolio(connectedData?: InvestmentSheetsData): string {
-  console.log('DEBUG: SE EJECUTA RENDER PORTFOLIO', {
-    hasConnectedData: Boolean(connectedData),
-    investmentsCount: connectedData?.investments.length,
-  });
-  
-  const investments = connectedData?.investments ?? demoInvestments;
+import type { PortfolioProvider } from './portfolio.types';
+
+export function renderPortfolio(
+  connectedData?: InvestmentSheetsData,
+  provider: PortfolioProvider = 'GBM',
+): string {
+  const investments = connectedData?.investments ?? demoInvestments.map((item) => ({
+    ...item,
+    location: item.symbol === 'BTC' ? 'BITSO' : 'GBM',
+  }));
+  const providerInvestedCapital = provider === 'GBM'
+    ? connectedData?.netInvestedCapitalByProvider?.GBM
+    : provider === 'BITSO'
+      ? connectedData?.netInvestedCapitalByProvider?.BITSO
+      : undefined;
   const viewModel = presentPortfolio(
     investments,
     Boolean(connectedData),
-    connectedData?.gainSummaryText,
+    provider,
+    providerInvestedCapital,
   );
   return renderPortfolioTemplate(viewModel);
 }

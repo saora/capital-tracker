@@ -6,12 +6,10 @@ import type {
 import { presentBalanceCard } from './components/balance-card/balance-card.presenter';
 import { presentMetricsGrid } from './components/metrics-grid/metrics-grid.presenter';
 import { presentPerformanceChart } from './components/performance-chart/performance-chart.presenter';
-import { presentHoldingsList } from './components/holdings-list/holdings-list.presenter';
 
 import { renderBalanceCardTemplate } from './components/balance-card/balance-card.template';
 import { renderMetricsGridTemplate } from './components/metrics-grid/metrics-grid.template';
 import { renderPerformanceChartTemplate } from './components/performance-chart/performance-chart.template';
-import { renderHoldingsListTemplate } from './components/holdings-list/holdings-list.template';
 
 export function presentDashboard(
   data: DashboardData,
@@ -45,17 +43,8 @@ export function presentDashboard(
       performanceChartViewModel,
     ),
 
-    holdingsListHtml: renderHoldingsListTemplate(
-      presentHoldingsList({
-        // Inicio muestra únicamente cuentas bancarias; las acciones, ETF y cripto
-        // se consultan en la pantalla Portfolio.
-        investments: data.investments.filter(
-          (investment) =>
-            investment.assetType === 'fixed-income' ||
-            investment.assetType === 'bank-account',
-        ),
-      }),
-    ),
+    // Las cuentas bancarias y los activos de renta fija ahora se consultan en Portafolio.
+    holdingsListHtml: '',
 
     disclaimer,
   };

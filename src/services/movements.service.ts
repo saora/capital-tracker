@@ -43,6 +43,7 @@ export async function getCatalog(token: string): Promise<CatalogAsset[]> {
 
 export type MovementCategory = "Cuenta bancaria" | "Acciones";
 export type MovementType = "Entrada" | "Salida";
+export type MovementOrigin = "GBM" | "Bitso";
 
 export interface Movement {
   id: string;
@@ -57,6 +58,12 @@ export interface Movement {
   averageCost?: number;
   commission?: number;
   currency: Currency;
+  origin?: MovementOrigin;
+  /** Derived from chronological purchases and sales; never stored in Google Sheets. */
+  realizedGain?: number;
+  realizedCostBasis?: number;
+  realizedNetProceeds?: number;
+  realizedGainStatus?: "calculated" | "insufficient-history";
 }
 
 type SheetRow = Array<string | number | boolean | null>;
@@ -114,15 +121,132 @@ function parseSheetDate(value: unknown): string {
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
 }
 
+interface MovementWithSourceOrder {
+  movement: Movement;
+  sourceOrder: number;
+}
+
+interface AverageCostLedger {
+  quantity: number;
+  totalCost: number;
+  reliable: boolean;
+}
+
+function normalizeMovementKey(value: string | undefined): string {
+  return String(value ?? "").trim().toLocaleUpperCase("es-MX");
+}
+
+/**
+ * Calculates realized gain at sale time using weighted-average cost.
+ * Purchase cost includes its commission; sale proceeds are reduced by the sale commission.
+ * If recorded purchases do not cover the sold quantity, the gain is left uncalculated
+ * rather than inventing a cost basis.
+ */
+function calculateRealizedGains(movements: Movement[]): Movement[] {
+  const enriched = movements.map((movement) => ({ ...movement }));
+  const chronological: MovementWithSourceOrder[] = movements
+    .map((movement, sourceOrder) => ({ movement, sourceOrder }))
+    .sort((a, b) =>
+      a.movement.date.localeCompare(b.movement.date) ||
+      a.sourceOrder - b.sourceOrder,
+    );
+
+  const ledgers = new Map<string, AverageCostLedger>();
+
+  chronological.forEach(({ movement, sourceOrder }) => {
+    const result = enriched[sourceOrder];
+    if (movement.category !== "Acciones") return;
+
+    const concept = movement.concept.trim().toLocaleLowerCase("es-MX");
+    const isPurchase = movement.type === "Entrada" && concept === "compra";
+    const isSale = movement.type === "Salida" && concept === "venta";
+    if (!isPurchase && !isSale) return;
+
+    const quantity = movement.quantity;
+    const amount = movement.amount;
+    const commission = movement.commission ?? 0;
+    const origin = normalizeMovementKey(movement.origin);
+    const asset = normalizeMovementKey(movement.account);
+    const currency = normalizeMovementKey(movement.currency);
+
+    if (!asset || !origin || !currency) {
+      if (isSale) result.realizedGainStatus = "insufficient-history";
+      return;
+    }
+
+    const key = [origin, asset, currency].join("::");
+    let ledger = ledgers.get(key);
+    if (!ledger) {
+      ledger = { quantity: 0, totalCost: 0, reliable: true };
+      ledgers.set(key, ledger);
+    }
+
+    if (isPurchase) {
+      if (
+        typeof quantity !== "number" ||
+        !Number.isFinite(quantity) ||
+        quantity <= 0 ||
+        !Number.isFinite(amount) ||
+        amount <= 0 ||
+        !Number.isFinite(commission) ||
+        commission < 0 ||
+        !ledger.reliable
+      ) {
+        ledger.reliable = false;
+        return;
+      }
+
+      ledger.quantity += quantity;
+      ledger.totalCost += amount + commission;
+      return;
+    }
+
+    if (
+      typeof quantity !== "number" ||
+      !Number.isFinite(quantity) ||
+      quantity <= 0 ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      !Number.isFinite(commission) ||
+      commission < 0 ||
+      !ledger.reliable ||
+      ledger.quantity + 1e-8 < quantity
+    ) {
+      result.realizedGainStatus = "insufficient-history";
+      ledger.reliable = false;
+      return;
+    }
+
+    const averageCostPerShare = ledger.totalCost / ledger.quantity;
+    const costBasis = averageCostPerShare * quantity;
+    const netProceeds = amount - commission;
+    const realizedGain = netProceeds - costBasis;
+
+    result.realizedGain = realizedGain;
+    result.realizedCostBasis = costBasis;
+    result.realizedNetProceeds = netProceeds;
+    result.realizedGainStatus = "calculated";
+
+    ledger.quantity -= quantity;
+    ledger.totalCost -= costBasis;
+    if (ledger.quantity < 1e-8) {
+      ledger.quantity = 0;
+      ledger.totalCost = 0;
+    }
+  });
+
+  return enriched;
+}
+
 export async function getMovements(token: string): Promise<Movement[]> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:O`));
   url.searchParams.set("majorDimension", "ROWS");
   url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
   const result = await sheetsRequest<{ values?: SheetRow[] }>(token, url.toString());
   const rows = result.values ?? [];
 
-  return rows.slice(1).map((row): Movement => {
+  const movements = rows.slice(1).map((row): Movement => {
     const directionText = String(row[2] ?? "").trim().toLocaleLowerCase("es-MX");
     const movementCategory = String(row[3] ?? "").trim().toLocaleLowerCase("es-MX");
     const concept = String(row[5] ?? "").trim();
@@ -143,8 +267,13 @@ export async function getMovements(token: string): Promise<Movement[]> {
       quantity: row[9] === undefined || row[9] === "" ? undefined : parseAmount(row[9]),
       averageCost,
       currency: (String(row[7] ?? "MXN").trim() || "MXN") as Currency,
+      origin: ["GBM", "Bitso"].includes(String(row[14] ?? "").trim())
+        ? String(row[14]).trim() as MovementOrigin
+        : undefined,
     };
-  }).filter((movement) => movement.id && movement.date && movement.account)
+  }).filter((movement) => movement.id && movement.date && movement.account);
+
+  return calculateRealizedGains(movements)
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
@@ -152,7 +281,7 @@ export async function appendMovement(
   token: string,
   movement: Omit<Movement, "currency"> & { currency?: Currency },
 ): Promise<void> {
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:N`) + ":append");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A:O`) + ":append");
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   url.searchParams.set("insertDataOption", "INSERT_ROWS");
 
@@ -175,6 +304,7 @@ export async function appendMovement(
         movement.amount,                     // L: Importe
         movement.commission ?? "",           // M: Comision
         movement.notes,                      // N: Notas
+        movement.origin ?? "",                // O: Origen
       ]],
     }),
   });
@@ -192,7 +322,7 @@ async function findMovementRow(token: string, id: string): Promise<number> {
 }
 export async function updateMovement(token: string, movement: Omit<Movement, "currency"> & { currency?: Currency }): Promise<void> {
   const row = await findMovementRow(token, movement.id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`));
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:O${row}`));
   url.searchParams.set("valueInputOption", "USER_ENTERED");
   await sheetsRequest(token, url.toString(), {
     method: "PUT",
@@ -213,12 +343,13 @@ export async function updateMovement(token: string, movement: Omit<Movement, "cu
         movement.amount,
         movement.commission ?? "",
         movement.notes,
+        movement.origin ?? "",
       ]],
     }),
   });
 }
 export async function deleteMovement(token: string, id: string): Promise<void> {
   const row = await findMovementRow(token, id);
-  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:N${row}`) + ":clear");
+  const url = new URL(valuesUrl(`'${MOVEMENTS_SHEET}'!A${row}:O${row}`) + ":clear");
   await sheetsRequest(token, url.toString(), { method: "POST", body: JSON.stringify({}) });
 }

@@ -52,5 +52,6 @@ export function renderTransactions(
     movementsHtml,
     filteredMovements.length,
     selectedPeriod,
+    movements,
   );
 }

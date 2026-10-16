@@ -24,11 +24,17 @@ export interface PortfolioPosition {
   gainClass: 'text-positive' | 'text-negative';
 }
 
+export type PortfolioProvider = 'GBM' | 'BITSO' | 'BANCO';
+
 export interface PortfolioViewModel {
+  provider: PortfolioProvider;
   positions: PortfolioPosition[];
   totalPositions: number;
   totalValueLabel: string;
+  totalInvestedValue: number;
   totalGainAmountLabel: string;
+  /** Aggregate gain based on provider entry capital, not per-position cost basis. */
+  totalGainValue: number;
   totalPerformanceLabel: string;
   totalGainClass: 'text-positive' | 'text-negative';
   currency: Currency;
