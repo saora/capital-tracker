@@ -132,13 +132,12 @@ export function presentPortfolio(
   const currency = positions[0]?.currency ?? "MXN";
   const totalValue = positions.reduce((total, position) => total + position.currentValue, 0);
   const positionInvestedValue = positions.reduce((total, position) => total + position.investedValue, 0);
-  const hasMovementBasedCapital =
+  const investedValue =
     provider !== "BANCO" &&
     typeof providerInvestedCapital === "number" &&
-    Number.isFinite(providerInvestedCapital);
-  const investedValue = hasMovementBasedCapital
-    ? providerInvestedCapital
-    : positionInvestedValue;
+    Number.isFinite(providerInvestedCapital)
+      ? providerInvestedCapital
+      : positionInvestedValue;
   const totalGain = totalValue - investedValue;
   const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
   const totalPerformanceLabel = formatPercent(totalPerformance).replace(/^\+/, "");
