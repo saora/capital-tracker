@@ -138,26 +138,12 @@ function normalizeProvider(value: unknown): string {
   return raw;
 }
 
-function resolveMovementProvider(
-  origin: unknown,
-  symbol: string,
-  assetLocations: Map<string, string>,
-): MovementProvider | undefined {
-  const explicit = normalizeProvider(origin);
-  if (explicit === "GBM" || explicit === "BITSO") return explicit;
-
-  const fallback = normalizeProvider(assetLocations.get(normalize(symbol)));
-  if (fallback === "GBM" || fallback === "BITSO") return fallback;
-  return undefined;
-}
-
 function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
   const assetLocations = new Map<string, string>();
   rows.forEach((row) => {
     const symbol = normalize(row[0]);
     const location = normalizeProvider(row[1]);
-    // Keep historical locations too, so older movements without an O:Origen value
-    // can still be attributed to the provider currently recorded for that symbol.
+    // Portfolio locations are used to classify current holdings, not to infer movement origins.
     if (symbol && location) assetLocations.set(symbol, location);
   });
   return assetLocations;
