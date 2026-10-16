@@ -72,7 +72,7 @@ export function renderMovement(movement: Movement): string {
           `<div><span>Ganancia realizada</span><strong class="movement-row__amount ${movement.realizedGain >= 0 ? 'is-incoming' : 'is-outgoing'}">${movement.realizedGain > 0 ? '+' : movement.realizedGain < 0 ? '−' : ''}${escapeHtml(formatCurrency(Math.abs(movement.realizedGain), movement.currency))}</strong></div>`,
         ]
       : [
-          `<div><span>Ganancia realizada</span><strong class="text-muted">No calculable: historial de compras insuficiente.</strong></div>`,
+          `<div><span>Ganancia realizada</span><strong class="text-muted">No calculable: faltan datos suficientes para determinar el costo base.</strong></div>`,
         ]
     : [];
   const facts = [
@@ -169,7 +169,7 @@ export function renderRealizedGainSummary(movements: Movement[]): string {
       </header>
       <div class="realized-gain-summary__totals">${valuesHtml}</div>
       ${uncalculatedSales > 0
-        ? `<p class="realized-gain-summary__warning">${uncalculatedSales} ${uncalculatedSales === 1 ? 'venta no se incluye' : 'ventas no se incluyen'} porque falta historial de compras suficiente para calcular el costo base.</p>`
+        ? `<p class="realized-gain-summary__warning">${uncalculatedSales} ${uncalculatedSales === 1 ? 'venta no se incluye' : 'ventas no se incluyen'} por falta de datos suficientes para calcular el costo base.</p>`
         : ''}
     </section>
   `;
