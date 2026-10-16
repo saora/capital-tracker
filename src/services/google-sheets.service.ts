@@ -105,10 +105,12 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
   return rows
     .slice(1, 7)
     .map((row, index) => {
-      const platform = String(row[2] ?? "").trim();
+      const rawPlatform = String(row[2] ?? "").trim();
       const invested = toNumber(row[3]);
       const currentValue = toNumber(row[4]);
-      if (!platform || (invested === 0 && currentValue === 0)) return null;
+      if (invested === 0 && currentValue === 0) return null;
+      // D10:D15 and E10:E15 are authoritative, even if a platform label is blank.
+      const platform = rawPlatform || `Cuenta bancaria ${index + 1}`;
 
       return {
         investment: makeInvestment(
