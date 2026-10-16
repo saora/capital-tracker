@@ -151,10 +151,15 @@ function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
   return assetLocations;
 }
 
-interface NetInvestmentBreakdown {
+interface ProviderTotals {
   GBM: number;
   BITSO: number;
   total: number;
+}
+
+interface NetInvestmentBreakdown extends ProviderTotals {
+  entries: ProviderTotals;
+  exits: ProviderTotals;
 }
 
 /**
@@ -164,7 +169,11 @@ interface NetInvestmentBreakdown {
  * Solo considera C (Tipo) = Entrada/Salida y O (Origen) = GBM/Bitso.
  */
 function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBreakdown {
-  const netByProvider = new Map<MovementProvider, number>([
+  const entriesByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const exitsByProvider = new Map<MovementProvider, number>([
     ["GBM", 0],
     ["BITSO", 0],
   ]);
@@ -178,19 +187,47 @@ function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBre
 
     const amount = toNumber(row[11]);
     const commission = toNumber(row[12]);
-    const signedAmount = direction === "entrada"
-      ? amount + commission
-      : -(amount - commission);
 
-    netByProvider.set(
+    if (direction === "entrada") {
+      entriesByProvider.set(
+        provider,
+        (entriesByProvider.get(provider) ?? 0) + amount + commission,
+      );
+      return;
+    }
+
+    // For exits, use net proceeds after the sale commission.
+    exitsByProvider.set(
       provider,
-      (netByProvider.get(provider) ?? 0) + signedAmount,
+      (exitsByProvider.get(provider) ?? 0) + amount - commission,
     );
   });
 
-  const GBM = netByProvider.get("GBM") ?? 0;
-  const BITSO = netByProvider.get("BITSO") ?? 0;
-  return { GBM, BITSO, total: GBM + BITSO };
+  const entriesGBM = entriesByProvider.get("GBM") ?? 0;
+  const entriesBITSO = entriesByProvider.get("BITSO") ?? 0;
+  const exitsGBM = exitsByProvider.get("GBM") ?? 0;
+  const exitsBITSO = exitsByProvider.get("BITSO") ?? 0;
+
+  const entries: ProviderTotals = {
+    GBM: entriesGBM,
+    BITSO: entriesBITSO,
+    total: entriesGBM + entriesBITSO,
+  };
+  const exits: ProviderTotals = {
+    GBM: exitsGBM,
+    BITSO: exitsBITSO,
+    total: exitsGBM + exitsBITSO,
+  };
+
+  const GBM = entries.GBM - exits.GBM;
+  const BITSO = entries.BITSO - exits.BITSO;
+  return {
+    GBM,
+    BITSO,
+    total: GBM + BITSO,
+    entries,
+    exits,
+  };
 }
 
 function parseVariableIncome(
@@ -327,7 +364,11 @@ export async function getInvestmentSheetsData(
     patrimonioTotal: totalValue,
   });
   console.log("DESGLOSE CAPITAL INVERTIDO", {
+    entradasGBM_ImporteMasComision: movementNetInvestment.entries.GBM,
+    salidasGBM_ImporteMenosComision: movementNetInvestment.exits.GBM,
     capitalNetoGBM: movementNetInvestment.GBM,
+    entradasBITSO_ImporteMasComision: movementNetInvestment.entries.BITSO,
+    salidasBITSO_ImporteMenosComision: movementNetInvestment.exits.BITSO,
     capitalNetoBITSO: movementNetInvestment.BITSO,
     capitalNetoGBM_BITSO: movementNetInvestment.total,
     capitalBancarioD10_D15: fixedIncomeInvested,
