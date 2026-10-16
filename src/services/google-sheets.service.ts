@@ -160,6 +160,7 @@ interface ProviderTotals {
 interface NetInvestmentBreakdown extends ProviderTotals {
   entries: ProviderTotals;
   exits: ProviderTotals;
+  exitCommissions: ProviderTotals;
 }
 
 /**
@@ -169,11 +170,19 @@ interface NetInvestmentBreakdown extends ProviderTotals {
  * Solo considera C (Tipo) = Entrada/Salida y O (Origen) = GBM/Bitso.
  */
 function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBreakdown {
+  const netByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
   const entriesByProvider = new Map<MovementProvider, number>([
     ["GBM", 0],
     ["BITSO", 0],
   ]);
   const exitsByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const exitCommissionsByProvider = new Map<MovementProvider, number>([
     ["GBM", 0],
     ["BITSO", 0],
   ]);
@@ -189,44 +198,61 @@ function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBre
     const commission = toNumber(row[12]);
 
     if (direction === "entrada") {
+      // Buying/investing increases capital by the amount plus its commission.
       entriesByProvider.set(
         provider,
         (entriesByProvider.get(provider) ?? 0) + amount + commission,
       );
+      netByProvider.set(
+        provider,
+        (netByProvider.get(provider) ?? 0) + amount + commission,
+      );
       return;
     }
 
-    // For exits, use net proceeds after the sale commission.
+    // A sale reduces capital by the sale amount; its commission is an invested cost.
     exitsByProvider.set(
       provider,
-      (exitsByProvider.get(provider) ?? 0) + amount - commission,
+      (exitsByProvider.get(provider) ?? 0) + amount,
+    );
+    exitCommissionsByProvider.set(
+      provider,
+      (exitCommissionsByProvider.get(provider) ?? 0) + commission,
+    );
+    netByProvider.set(
+      provider,
+      (netByProvider.get(provider) ?? 0) - amount + commission,
     );
   });
 
+  const GBM = netByProvider.get("GBM") ?? 0;
+  const BITSO = netByProvider.get("BITSO") ?? 0;
   const entriesGBM = entriesByProvider.get("GBM") ?? 0;
   const entriesBITSO = entriesByProvider.get("BITSO") ?? 0;
   const exitsGBM = exitsByProvider.get("GBM") ?? 0;
   const exitsBITSO = exitsByProvider.get("BITSO") ?? 0;
+  const exitCommissionsGBM = exitCommissionsByProvider.get("GBM") ?? 0;
+  const exitCommissionsBITSO = exitCommissionsByProvider.get("BITSO") ?? 0;
 
-  const entries: ProviderTotals = {
-    GBM: entriesGBM,
-    BITSO: entriesBITSO,
-    total: entriesGBM + entriesBITSO,
-  };
-  const exits: ProviderTotals = {
-    GBM: exitsGBM,
-    BITSO: exitsBITSO,
-    total: exitsGBM + exitsBITSO,
-  };
-
-  const GBM = entries.GBM - exits.GBM;
-  const BITSO = entries.BITSO - exits.BITSO;
   return {
     GBM,
     BITSO,
     total: GBM + BITSO,
-    entries,
-    exits,
+    entries: {
+      GBM: entriesGBM,
+      BITSO: entriesBITSO,
+      total: entriesGBM + entriesBITSO,
+    },
+    exits: {
+      GBM: exitsGBM,
+      BITSO: exitsBITSO,
+      total: exitsGBM + exitsBITSO,
+    },
+    exitCommissions: {
+      GBM: exitCommissionsGBM,
+      BITSO: exitCommissionsBITSO,
+      total: exitCommissionsGBM + exitCommissionsBITSO,
+    },
   };
 }
 
@@ -365,10 +391,12 @@ export async function getInvestmentSheetsData(
   });
   console.log("DESGLOSE CAPITAL INVERTIDO", {
     entradasGBM_ImporteMasComision: movementNetInvestment.entries.GBM,
-    salidasGBM_ImporteMenosComision: movementNetInvestment.exits.GBM,
+    salidasGBM_Importe: movementNetInvestment.exits.GBM,
+    comisionesSalidasGBM: movementNetInvestment.exitCommissions.GBM,
     capitalNetoGBM: movementNetInvestment.GBM,
     entradasBITSO_ImporteMasComision: movementNetInvestment.entries.BITSO,
-    salidasBITSO_ImporteMenosComision: movementNetInvestment.exits.BITSO,
+    salidasBITSO_Importe: movementNetInvestment.exits.BITSO,
+    comisionesSalidasBITSO: movementNetInvestment.exitCommissions.BITSO,
     capitalNetoBITSO: movementNetInvestment.BITSO,
     capitalNetoGBM_BITSO: movementNetInvestment.total,
     capitalBancarioD10_D15: fixedIncomeInvested,
