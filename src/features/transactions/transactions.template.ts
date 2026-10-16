@@ -285,7 +285,7 @@ export function renderTransactionsTemplate(
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
             <span>Número de títulos</span>
-            <input name="quantity" type="number" min="1" max="99999" step="1" inputmode="numeric" placeholder="0" disabled />
+            <input name="quantity" type="number" min="0.00000001" max="99999999" step="0.00000001" inputmode="decimal" placeholder="0.00000000" disabled />
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>

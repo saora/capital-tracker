@@ -171,7 +171,7 @@ function updatePurchaseAmount(form: HTMLFormElement): void {
     const averageInput = form.querySelector<HTMLInputElement>('input[name="averageCost"]');
     const averageCost = averageInput ? parseNumericInput(averageInput.value) : Number.NaN;
     const amountInput = form.querySelector<HTMLInputElement>('input[name="amount"]');
-    if (amountInput && Number.isInteger(quantity) && quantity > 0 && Number.isFinite(averageCost) && averageCost > 0) {
+    if (amountInput && Number.isFinite(quantity) && quantity > 0 && Number.isFinite(averageCost) && averageCost > 0) {
       amountInput.value = (quantity * averageCost).toFixed(2);
     }
   }
@@ -380,8 +380,8 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
   });
   app.addEventListener("input", (event: Event) => {
     const target = event.target; if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return; const form = target.closest<HTMLFormElement>("#movement-form"); if (!form) return;
-    if (target instanceof HTMLInputElement && target.matches("[data-currency-input]")) { const start = target.selectionStart; const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); const [integerPart = "", ...decimalParts] = cleaned.split("."); const limitedInteger = integerPart.slice(0, 6); const limitedDecimals = (decimalParts.join("").slice(0, 2)); const limited = cleaned.includes(".") ? `${limitedInteger}.${limitedDecimals}` : limitedInteger; if (limited !== target.value) target.value = limited; if (start !== null) target.setSelectionRange(Math.min(start, target.value.length), Math.min(start, target.value.length)); }
-    if (target.name === "quantity") { target.value = target.value.replace(/[^0-9].*$/, "").slice(0, 5); updatePurchaseAmount(form); }
+    if (target instanceof HTMLInputElement && target.matches("[data-currency-input]")) { const start = target.selectionStart; const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); const [integerPart = "", ...decimalParts] = cleaned.split("."); const limitedInteger = integerPart.slice(0, 12); const limitedDecimals = decimalParts.join("").slice(0, 2); const limited = cleaned.includes(".") ? `${limitedInteger}.${limitedDecimals}` : limitedInteger; if (limited !== target.value) target.value = limited; if (start !== null) target.setSelectionRange(Math.min(start, target.value.length), Math.min(start, target.value.length)); }
+    if (target.name === "quantity") { const cleaned = target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1"); const [integerPart = "", ...decimalParts] = cleaned.split("."); const limitedInteger = integerPart.slice(0, 8); const limitedDecimals = decimalParts.join("").slice(0, 8); target.value = cleaned.includes(".") ? `${limitedInteger}.${limitedDecimals}` : limitedInteger; updatePurchaseAmount(form); }
     if (target.name === "averageCost") updatePurchaseAmount(form);
     if (target.name === "amount" || target.name === "commission") updateTradeTotal(form);
     updateMovementSubmitState(form);
