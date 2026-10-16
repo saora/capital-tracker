@@ -3,7 +3,6 @@ import {
   accountOptions,
   renderEmptyMovementsTemplate,
   renderMovement,
-  renderRealizedGainSummary,
   renderTransactionsTemplate,
   type MovementPeriod,
 } from './transactions.template';
