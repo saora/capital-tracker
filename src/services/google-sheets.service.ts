@@ -317,7 +317,6 @@ export async function getInvestmentSheetsData(
     patrimonioTotal: totalValue,
   });
   console.log("DESGLOSE CAPITAL INVERTIDO", {
-    capitalD10_D15: fixedIncomeInvested,
     entradasGBM_ImporteMasComision: movementEntryInvestment.GBM,
     entradasBITSO_ImporteMasComision: movementEntryInvestment.BITSO,
     totalEntradasGBM_BITSO: movementEntryInvestment.total,
