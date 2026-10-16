@@ -80,9 +80,9 @@ interface ParsedInvestment {
 
 interface MovementPosition {
   symbol: string;
+  provider: MovementProvider;
   quantity: number;
   costBasis: number;
-  realizedGain: number;
 }
 
 function makeInvestment(
@@ -108,9 +108,9 @@ function makeInvestment(
 }
 
 function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
+  // The requested banking capital/value is defined explicitly by D10:D15 / E10:E15.
   return rows
-    .slice(1)
-    .filter((row) => normalize(row[0]) === "renta fija")
+    .slice(1, 7)
     .map((row, index) => {
       const platform = String(row[2] ?? "").trim();
       const invested = toNumber(row[3]);
@@ -133,17 +133,39 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
     .filter((item) => item !== null);
 }
 
+type MovementProvider = "GBM" | "BITSO";
+
+function normalizeProvider(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  const normalized = normalize(raw);
+  if (normalized === "gbm") return "GBM";
+  if (normalized === "bitso") return "BITSO";
+  return raw;
+}
+
+function resolveMovementProvider(
+  origin: unknown,
+  symbol: string,
+  assetLocations: Map<string, string>,
+): MovementProvider | undefined {
+  const explicit = normalizeProvider(origin);
+  if (explicit === "GBM" || explicit === "BITSO") return explicit;
+
+  const fallback = normalizeProvider(assetLocations.get(normalize(symbol)));
+  if (fallback === "GBM" || fallback === "BITSO") return fallback;
+  return undefined;
+}
+
 function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
-  const activeAssets = new Map<string, string>();
+  const assetLocations = new Map<string, string>();
   rows.forEach((row) => {
     const symbol = normalize(row[0]);
-    const location = String(row[1] ?? "").trim();
-    const status = normalize(row[2]);
-    if (symbol && status === "activo") {
-      activeAssets.set(symbol, location || "Sin ubicación");
-    }
+    const location = normalizeProvider(row[1]);
+    // Keep historical locations too, so older movements without an O:Origen value
+    // can still be attributed to the provider currently recorded for that symbol.
+    if (symbol && location) assetLocations.set(symbol, location);
   });
-  return activeAssets;
+  return assetLocations;
 }
 
 /**
@@ -166,31 +188,44 @@ function parseCurrentPrices(rows: SheetRow[]): Map<string, { price: number; dail
   return prices;
 }
 
-function parseMovementPositions(rows: SheetRow[]): Map<string, MovementPosition> {
+function parseMovementPositions(
+  rows: SheetRow[],
+  assetLocations: Map<string, string>,
+): Map<string, MovementPosition> {
   const sorted = rows.slice(1)
     .filter((row) => String(row[0] ?? "").trim() && String(row[4] ?? "").trim())
-    .map((row) => ({
-      date: String(row[1] ?? ""),
-      direction: normalize(row[2]),
-      type: normalize(row[3]),
-      symbol: String(row[4] ?? "").trim(),
-      concept: normalize(row[5]),
-      quantity: toNumber(row[9]),
-      amount: toNumber(row[11]),
-      commission: toNumber(row[12]),
-    }))
+    .map((row) => {
+      const symbol = String(row[4] ?? "").trim();
+      return {
+        id: String(row[0] ?? "").trim(),
+        date: String(row[1] ?? ""),
+        direction: normalize(row[2]),
+        type: normalize(row[3]),
+        symbol,
+        provider: resolveMovementProvider(row[14], symbol, assetLocations),
+        concept: normalize(row[5]),
+        quantity: toNumber(row[9]),
+        amount: toNumber(row[11]),
+        commission: toNumber(row[12]),
+      };
+    })
     .filter((row) => row.type.includes("accion") || row.type.includes("invers"))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const positions = new Map<string, MovementPosition>();
 
   for (const movement of sorted) {
-    const key = normalize(movement.symbol);
+    if (!movement.provider) {
+      throw new Error(
+        `El movimiento ${movement.id} (${movement.symbol}) no tiene origen GBM/Bitso y no se puede asignar a un portafolio. Completa la columna O (Origen) de "Movimientos" o la ubicación en "Portfolio".`,
+      );
+    }
+    const key = `${movement.provider}:${normalize(movement.symbol)}`;
     const current = positions.get(key) ?? {
       symbol: movement.symbol.toUpperCase(),
+      provider: movement.provider,
       quantity: 0,
       costBasis: 0,
-      realizedGain: 0,
     };
     const quantity = Math.max(0, movement.quantity);
 
@@ -204,12 +239,9 @@ function parseMovementPositions(rows: SheetRow[]): Map<string, MovementPosition>
         const soldQuantity = Math.min(quantity, current.quantity);
         const averageCost = current.costBasis / current.quantity;
         const allocatedCost = averageCost * soldQuantity;
-        const netProceeds = movement.amount - movement.commission;
-        current.realizedGain += netProceeds * (soldQuantity / quantity) - allocatedCost;
         current.costBasis = Math.max(0, current.costBasis - allocatedCost);
         current.quantity = Math.max(0, current.quantity - soldQuantity);
       } else {
-        // Non-sale withdrawals still reduce holdings at average cost.
         const removedQuantity = Math.min(quantity, current.quantity);
         const averageCost = current.quantity > 0 ? current.costBasis / current.quantity : 0;
         current.costBasis = Math.max(0, current.costBasis - averageCost * removedQuantity);
@@ -223,6 +255,54 @@ function parseMovementPositions(rows: SheetRow[]): Map<string, MovementPosition>
   return positions;
 }
 
+/**
+ * Capital variable neto = entradas menos salidas de GBM y Bitso.
+ * Las comisiones de compra aumentan el capital aportado y las de venta
+ * reducen el efectivo recuperado.
+ */
+function calculateNetInvestmentFromMovements(
+  rows: SheetRow[],
+  assetLocations: Map<string, string>,
+): number {
+  const netByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const unassigned: string[] = [];
+
+  rows.slice(1).forEach((row) => {
+    const type = normalize(row[3]);
+    if (!type.includes("accion") && !type.includes("invers")) return;
+
+    const id = String(row[0] ?? "").trim();
+    const symbol = String(row[4] ?? "").trim();
+    if (!id || !symbol) return;
+    const provider = resolveMovementProvider(row[14], symbol, assetLocations);
+    if (!provider) {
+      unassigned.push(`${id} (${symbol})`);
+      return;
+    }
+
+    const direction = normalize(row[2]);
+    const amount = toNumber(row[11]);
+    const commission = toNumber(row[12]);
+    const signedAmount = direction === "entrada"
+      ? amount + commission
+      : direction === "salida"
+        ? -(amount - commission)
+        : 0;
+    netByProvider.set(provider, (netByProvider.get(provider) ?? 0) + signedAmount);
+  });
+
+  if (unassigned.length > 0) {
+    throw new Error(
+      `Hay movimientos de inversión sin origen GBM/Bitso: ${unassigned.slice(0, 5).join(", ")}. Completa la columna O (Origen) de "Movimientos" para poder calcular el capital invertido correctamente.`,
+    );
+  }
+
+  return [...netByProvider.values()].reduce((total, value) => total + value, 0);
+}
+
 export async function getInvestmentSheetsData(
   accessToken?: string,
 ): Promise<InvestmentSheetsData> {
@@ -232,14 +312,14 @@ export async function getInvestmentSheetsData(
     readRange(token, "'Inversiones'!A9:J"),
     readRange(token, "'Renta variable'!A12:N27"),
     readRange(token, "'Portfolio'!A2:C"),
-    readRange(token, "'Movimientos'!A1:M"),
+    readRange(token, "'Movimientos'!A1:O"),
   ]);
 
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
   const currentPrices = parseCurrentPrices(variableRows);
-  const movementPositions = parseMovementPositions(movementRows);
-  let realizedGain = 0;
+  const netVariableInvestment = calculateNetInvestmentFromMovements(movementRows, activeAssets);
+  const movementPositions = parseMovementPositions(movementRows, activeAssets);
 
   const variableIncome: ParsedInvestment[] = [...movementPositions.values()]
     .filter((position) => position.quantity > 0.0000001)
@@ -251,10 +331,9 @@ export async function getInvestmentSheetsData(
         );
       }
 
-      realizedGain += position.realizedGain;
       const invested = position.costBasis;
       const currentValue = position.quantity * market.price;
-      const location = activeAssets.get(normalize(position.symbol)) ?? "Sin ubicación";
+      const location = position.provider;
 
       return {
         investment: {
@@ -275,19 +354,19 @@ export async function getInvestmentSheetsData(
       };
     });
 
-  // Include realized gains even for assets whose full position was sold.
-  for (const position of movementPositions.values()) {
-    if (position.quantity <= 0.0000001) realizedGain += position.realizedGain;
-  }
-
   const parsedInvestments = [...fixedIncome, ...variableIncome];
   if (parsedInvestments.length === 0) {
     throw new Error("No se encontraron posiciones. Verifica las hojas y sus columnas.");
   }
 
-  const invested = parsedInvestments.reduce((total, item) => total + item.invested, 0);
+  const fixedIncomeInvested = investmentRows
+    .slice(1, 7)
+    .reduce((total, row) => total + toNumber(row[3]), 0);
+  const invested = fixedIncomeInvested + netVariableInvestment;
   const totalValue = parsedInvestments.reduce((total, item) => total + item.currentValue, 0);
-  const unrealizedGain = variableIncome.reduce(
+  // Match the gains displayed in the GBM, Bitso and bank portfolios:
+  // unrealized gains for open stock positions + accrued bank/fixed-income gains.
+  const variableTotalGain = variableIncome.reduce(
     (total, item) => total + item.currentValue - item.invested,
     0,
   );
@@ -295,7 +374,6 @@ export async function getInvestmentSheetsData(
     (total, item) => total + item.currentValue - item.invested,
     0,
   );
-  const variableTotalGain = unrealizedGain + realizedGain;
   const totalGain = variableTotalGain + fixedIncomeGain;
 
   const dailyChangeAmount = variableIncome.reduce((total, item) => {
@@ -324,7 +402,6 @@ export async function getInvestmentSheetsData(
   console.log("RESUMEN CALCULADO", {
     capitalInvertido: invested,
     patrimonioTotal: totalValue,
-    gananciaRealizada: realizedGain,
     gananciaTotal: totalGain,
     cantidadPosiciones: parsedInvestments.length,
   });
