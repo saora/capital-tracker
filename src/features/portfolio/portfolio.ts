@@ -15,9 +15,9 @@ export function renderPortfolio(
     location: item.symbol === 'BTC' ? 'BITSO' : 'GBM',
   }));
   const providerInvestedCapital = provider === 'GBM'
-    ? connectedData?.entryCapitalByProvider?.GBM
+    ? connectedData?.netInvestedCapitalByProvider?.GBM
     : provider === 'BITSO'
-      ? connectedData?.entryCapitalByProvider?.BITSO
+      ? connectedData?.netInvestedCapitalByProvider?.BITSO
       : undefined;
   const viewModel = presentPortfolio(
     investments,
