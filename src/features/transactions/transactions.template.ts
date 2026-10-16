@@ -164,7 +164,7 @@ export function renderRealizedGainSummary(movements: Movement[]): string {
       <header class="realized-gain-summary__header">
         <div>
           <h2>Ganancia realizada acumulada</h2>
-          <p>Ventas históricas; incluye comisiones de compra en el costo y descuenta las comisiones de venta.</p>
+          <p>Todo el historial, independientemente del filtro. El costo incluye comisiones de compra y descuenta las de venta.</p>
         </div>
       </header>
       <div class="realized-gain-summary__totals">${valuesHtml}</div>
@@ -304,7 +304,7 @@ export function renderTransactionsTemplate(
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
-            <span>Total</span>
+            <span data-trade-total-label>Total</span>
             <input name="total" type="text" placeholder="$0.00" readonly aria-readonly="true" data-trade-total disabled />
           </label>
 
