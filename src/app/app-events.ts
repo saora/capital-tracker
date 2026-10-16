@@ -146,12 +146,17 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
 function updateTradeTotal(form: HTMLFormElement): void {
   const amount = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="amount"]')?.value ?? "");
   const commission = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="commission"]')?.value ?? "0");
+  const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
   const totalInput = form.querySelector<HTMLInputElement>('input[name="total"]');
   if (!totalInput) return;
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   const safeCommission = Number.isFinite(commission) ? commission : 0;
+  // Purchases require amount + buy fee; sales show cash proceeds after sale fee.
+  const tradeTotal = concept === "Venta"
+    ? safeAmount - safeCommission
+    : safeAmount + safeCommission;
   totalInput.value = safeAmount > 0 || safeCommission > 0
-    ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(safeAmount + safeCommission)
+    ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(tradeTotal)
     : "";
 }
 
