@@ -158,10 +158,10 @@ export function renderTransactionsTemplate(
             </select>
           </label>
 
-          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
-            <span>Origen</span>
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta,Dividendo,Comisión,Otro" hidden>
+            <span>Bróker o plataforma</span>
             <select name="origin" id="movement-origin" disabled>
-              <option value="">Selecciona un origen</option>
+              <option value="">Selecciona un bróker o plataforma</option>
               <option value="GBM">GBM</option>
               <option value="Bitso">Bitso</option>
             </select>
