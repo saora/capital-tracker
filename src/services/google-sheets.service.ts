@@ -163,6 +163,64 @@ function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
   return assetLocations;
 }
 
+interface NetInvestmentBreakdown {
+  GBM: number;
+  BITSO: number;
+  total: number;
+}
+
+/**
+ * Capital variable neto según la regla acordada: suma de entradas menos salidas
+ * para GBM y Bitso. La columna O (Origen) se prefiere sobre la ubicación de
+ * Portfolio; esta última solo sirve como respaldo para movimientos históricos.
+ */
+function calculateNetInvestmentFromMovements(
+  rows: SheetRow[],
+  assetLocations: Map<string, string>,
+): NetInvestmentBreakdown {
+  const netByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const unassigned: string[] = [];
+
+  rows.slice(1).forEach((row) => {
+    const type = normalize(row[3]);
+    if (!type.includes("accion") && !type.includes("invers")) return;
+
+    const id = String(row[0] ?? "").trim();
+    const symbol = String(row[4] ?? "").trim();
+    if (!id || !symbol) return;
+
+    const provider = resolveMovementProvider(row[14], symbol, assetLocations);
+    if (!provider) {
+      unassigned.push(`${id} (${symbol})`);
+      return;
+    }
+
+    const direction = normalize(row[2]);
+    const amount = toNumber(row[11]);
+    const commission = toNumber(row[12]);
+    const signedAmount = direction === "entrada"
+      ? amount + commission
+      : direction === "salida"
+        ? -(amount - commission)
+        : 0;
+
+    netByProvider.set(provider, (netByProvider.get(provider) ?? 0) + signedAmount);
+  });
+
+  if (unassigned.length > 0) {
+    throw new Error(
+      `Hay movimientos de inversión sin origen GBM/Bitso: ${unassigned.slice(0, 5).join(", ")}. Completa la columna O (Origen) de "Movimientos" para calcular el capital invertido correctamente.`,
+    );
+  }
+
+  const GBM = netByProvider.get("GBM") ?? 0;
+  const BITSO = netByProvider.get("BITSO") ?? 0;
+  return { GBM, BITSO, total: GBM + BITSO };
+}
+
 function parseVariableIncome(
   rows: SheetRow[],
   activeAssets: Map<string, string>,
