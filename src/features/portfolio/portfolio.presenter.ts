@@ -40,6 +40,7 @@ export function presentPortfolio(
   investments: Investment[],
   connected: boolean,
   provider: PortfolioProvider = "GBM",
+  providerInvestedCapital?: number,
 ): PortfolioViewModel {
   const selectedInvestments = investments.filter((item) => {
     if (provider === "BANCO") {
@@ -130,7 +131,13 @@ export function presentPortfolio(
   // The current Google Sheets service normalizes all position values to MXN.
   const currency = positions[0]?.currency ?? "MXN";
   const totalValue = positions.reduce((total, position) => total + position.currentValue, 0);
-  const investedValue = positions.reduce((total, position) => total + position.investedValue, 0);
+  const positionInvestedValue = positions.reduce((total, position) => total + position.investedValue, 0);
+  const investedValue =
+    provider !== "BANCO" &&
+    typeof providerInvestedCapital === "number" &&
+    Number.isFinite(providerInvestedCapital)
+      ? providerInvestedCapital
+      : positionInvestedValue;
   const totalGain = totalValue - investedValue;
   const totalPerformance = investedValue > 0 ? (totalGain / investedValue) * 100 : 0;
   const totalPerformanceLabel = formatPercent(totalPerformance).replace(/^\+/, "");
@@ -140,7 +147,9 @@ export function presentPortfolio(
     positions,
     totalPositions: positions.length,
     totalValueLabel: formatCurrency(totalValue, currency),
+    totalInvestedValue: investedValue,
     totalGainAmountLabel,
+    totalGainValue: totalGain,
     totalPerformanceLabel,
     totalGainClass: totalGain >= 0 ? "text-positive" : "text-negative",
     currency,

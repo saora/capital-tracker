@@ -57,6 +57,24 @@ function renderMovementPeriods(selected: MovementPeriod): string {
 export function renderMovement(movement: Movement): string {
   const incoming = movement.type === 'Entrada';
   const signedAmount = `${incoming ? '+' : '−'}${formatCurrency(movement.amount, movement.currency)}`;
+  const isTrade = ['Compra', 'Venta'].includes(movement.concept);
+  const isSale = movement.type === 'Salida' && movement.concept === 'Venta';
+  const tradeTotal = movement.concept === 'Venta'
+    ? movement.amount - (movement.commission ?? 0)
+    : movement.amount + (movement.commission ?? 0);
+  const realizedGainFacts = isSale
+    ? movement.realizedGainStatus === 'calculated' &&
+      typeof movement.realizedGain === 'number' &&
+      typeof movement.realizedCostBasis === 'number' &&
+      typeof movement.realizedNetProceeds === 'number'
+      ? [
+          `<div><span>Costo de los títulos vendidos</span><strong>${escapeHtml(formatCurrency(movement.realizedCostBasis, movement.currency))}</strong></div>`,
+          `<div><span>Ganancia realizada</span><strong class="movement-row__amount ${movement.realizedGain >= 0 ? 'is-incoming' : 'is-outgoing'}">${movement.realizedGain > 0 ? '+' : movement.realizedGain < 0 ? '−' : ''}${escapeHtml(formatCurrency(Math.abs(movement.realizedGain), movement.currency))}</strong></div>`,
+        ]
+      : [
+          `<div><span>Ganancia realizada</span><strong class="text-muted">No calculable: faltan datos suficientes para determinar el costo base.</strong></div>`,
+        ]
+    : [];
   const facts = [
     `<div><span>Fecha</span><strong>${escapeHtml(formatDate(movement.date))}</strong></div>`,
     `<div><span>Tipo</span><strong>${escapeHtml(movement.type)}</strong></div>`,
@@ -64,9 +82,10 @@ export function renderMovement(movement: Movement): string {
     `<div><span>Concepto</span><strong>${escapeHtml(movement.concept || '—')}</strong></div>`,
     `<div><span>Importe</span><strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong></div>`,
     ...(movement.commission !== undefined ? [`<div><span>Comisión</span><strong>${escapeHtml(formatCurrency(movement.commission, movement.currency))}</strong></div>`] : []),
-    ...(movement.commission !== undefined && ['Compra', 'Venta'].includes(movement.concept) ? [`<div><span>Total</span><strong>${escapeHtml(formatCurrency(movement.amount + movement.commission, movement.currency))}</strong></div>`] : []),
+    ...(isTrade ? [`<div><span>${movement.concept === 'Venta' ? 'Ingreso neto de venta' : 'Costo total de compra'}</span><strong>${escapeHtml(formatCurrency(tradeTotal, movement.currency))}</strong></div>`] : []),
     ...(movement.quantity !== undefined ? [`<div><span>Número de títulos</span><strong>${escapeHtml(String(movement.quantity))}</strong></div>`] : []),
     ...(movement.averageCost !== undefined ? [`<div><span>Costo promedio</span><strong>${escapeHtml(formatCurrency(movement.averageCost, movement.currency))}</strong></div>`] : []),
+    ...realizedGainFacts,
     ...(movement.origin ? [`<div><span>Origen</span><strong>${escapeHtml(movement.origin)}</strong></div>`] : []),
     ...(movement.notes ? [`<div class="movement-row__note"><span>Notas</span><strong>${escapeHtml(movement.notes)}</strong></div>`] : []),
   ].join('');
@@ -87,6 +106,75 @@ export function renderMovement(movement: Movement): string {
     </article>`;
 }
 
+export function renderRealizedGainSummary(movements: Movement[]): string {
+  const sales = movements.filter((movement) =>
+    movement.category === 'Acciones' &&
+    movement.type === 'Salida' &&
+    movement.concept.trim().toLocaleLowerCase('es-MX') === 'venta',
+  );
+  if (sales.length === 0) return '';
+
+  const totals = new Map<string, { origin: string; currency: Movement['currency']; gain: number; sales: number }>();
+  sales.forEach((movement) => {
+    if (
+      movement.realizedGainStatus !== 'calculated' ||
+      typeof movement.realizedGain !== 'number' ||
+      !movement.origin
+    ) return;
+
+    const key = `${movement.origin}::${movement.currency}`;
+    const current = totals.get(key) ?? {
+      origin: movement.origin,
+      currency: movement.currency,
+      gain: 0,
+      sales: 0,
+    };
+    current.gain += movement.realizedGain;
+    current.sales += 1;
+    totals.set(key, current);
+  });
+
+  const providerOrder: Record<string, number> = { GBM: 0, Bitso: 1 };
+  const currencyOrder: Record<string, number> = { MXN: 0, USD: 1 };
+  const totalRows = [...totals.values()]
+    .sort((a, b) =>
+      (providerOrder[a.origin] ?? 2) - (providerOrder[b.origin] ?? 2) ||
+      (currencyOrder[a.currency] ?? 2) - (currencyOrder[b.currency] ?? 2),
+    )
+    .map(({ origin, currency, gain, sales: count }) => {
+      const signedGain = `${gain > 0 ? '+' : gain < 0 ? '−' : ''}${formatCurrency(Math.abs(gain), currency)}`;
+      const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
+      return `
+        <div class="realized-gain-summary__row">
+          <span>${escapeHtml(origin)} · ${escapeHtml(currency)}</span>
+          <strong class="${gainClass}">${escapeHtml(signedGain)}</strong>
+          <small>${count} ${count === 1 ? 'venta calculada' : 'ventas calculadas'}</small>
+        </div>
+      `;
+    })
+    .join('');
+
+  const uncalculatedSales = sales.filter(
+    (movement) => movement.realizedGainStatus !== 'calculated',
+  ).length;
+  const valuesHtml = totalRows || '<p class="realized-gain-summary__empty">Todavía no hay ventas con costo base calculable.</p>';
+
+  return `
+    <section class="card realized-gain-summary" aria-label="Ganancia realizada acumulada">
+      <header class="realized-gain-summary__header">
+        <div>
+          <h2>Ganancia realizada acumulada</h2>
+          <p>Todo el historial, independientemente del filtro. El costo incluye comisiones de compra y descuenta las de venta.</p>
+        </div>
+      </header>
+      <div class="realized-gain-summary__totals">${valuesHtml}</div>
+      ${uncalculatedSales > 0
+        ? `<p class="realized-gain-summary__warning">${uncalculatedSales} ${uncalculatedSales === 1 ? 'venta no se incluye' : 'ventas no se incluyen'} por falta de datos suficientes para calcular el costo base.</p>`
+        : ''}
+    </section>
+  `;
+}
+
 export function renderEmptyMovementsTemplate(): string {
   return '<div class="movement-empty">No hay movimientos en este periodo.</div>';
 }
@@ -97,6 +185,7 @@ export function renderTransactionsTemplate(
   movementsHtml: string,
   filteredCount: number,
   selectedPeriod: MovementPeriod,
+  allMovements: Movement[],
 ): string {
   return `
     <section class="transactions-page">
@@ -158,10 +247,10 @@ export function renderTransactionsTemplate(
             </select>
           </label>
 
-          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra" hidden>
-            <span>Origen</span>
+          <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta,Dividendo,Comisión,Otro" hidden>
+            <span>Bróker o plataforma</span>
             <select name="origin" id="movement-origin" disabled>
-              <option value="">Selecciona un origen</option>
+              <option value="">Selecciona un bróker o plataforma</option>
               <option value="GBM">GBM</option>
               <option value="Bitso">Bitso</option>
             </select>
@@ -215,7 +304,7 @@ export function renderTransactionsTemplate(
           </label>
 
           <label class="movement-field" data-field-category="Acciones" data-field-concept="Compra,Venta" hidden>
-            <span>Total</span>
+            <span data-trade-total-label>Total</span>
             <input name="total" type="text" placeholder="$0.00" readonly aria-readonly="true" data-trade-total disabled />
           </label>
 
@@ -253,6 +342,8 @@ export function renderTransactionsTemplate(
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
         </button>
       </div>
+
+      ${renderRealizedGainSummary(allMovements)}
 
       <section class="dashboard__section" id="movement-history-section">
         <div class="section-heading">

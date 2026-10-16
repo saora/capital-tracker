@@ -10,6 +10,8 @@ import {
 export interface InvestmentSheetsData {
   investments: Investment[];
   summary: PortfolioSummary;
+  /** Net invested capital by brokerage, based only on Movimientos C/L/M/O. */
+  netInvestedCapitalByProvider?: { GBM: number; BITSO: number };
   historyPoints: ChartPoint[];
   gainSummaryText?: string;
 }
@@ -29,9 +31,7 @@ function getSpreadsheetId(): string {
 }
 
 function toNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
+  if (typeof value === "number" && Number.isFinite(value)) return value;
 
   if (typeof value === "string") {
     const normalized = value.replace(/[$,%\s]/g, "").replace(/,/g, "");
@@ -42,55 +42,19 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
-function parseGainSummaryAmount(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  const text = String(value ?? "").trim();
-  if (!text) {
-    throw new Error(
-      'La celda "Renta variable"!A9 está vacía. Ingresa el monto de la ganancia total.',
-    );
-  }
-
-  // A9 contains only the gain amount. Google Sheets may return either a
-  // numeric value or a formatted currency string, so no percentage is expected.
-  const isParenthesizedNegative = /^\(.*\)$/.test(text);
-  const normalized = text
-    .replace(/[()$€£,\s]/g, "")
-    .replace(/[^\d.+-]/g, "");
-  const parsed = Number(normalized);
-  const amount = isParenthesizedNegative ? -Math.abs(parsed) : parsed;
-
-  if (!Number.isFinite(amount)) {
-    throw new Error(
-      'No se pudo interpretar el monto de ganancia total desde "Renta variable"!A9.',
-    );
-  }
-
-  return amount;
-}
-
 function normalize(value: unknown): string {
-  return String(value ?? "")
-    .trim()
-    .toLocaleLowerCase("es-MX");
+  return String(value ?? "").trim().toLocaleLowerCase("es-MX");
 }
 
 async function readRange(token: string, range: string): Promise<SheetRow[]> {
   const url = new URL(
-    `${API_URL}/${encodeURIComponent(
-      getSpreadsheetId(),
-    )}/values/${encodeURIComponent(range)}`,
+    `${API_URL}/${encodeURIComponent(getSpreadsheetId())}/values/${encodeURIComponent(range)}`,
   );
-
   url.searchParams.set("majorDimension", "ROWS");
   url.searchParams.set("valueRenderOption", "UNFORMATTED_VALUE");
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-    // Portfolio reads must bypass the browser HTTP cache on every refresh.
     cache: "no-store",
   });
 
@@ -99,22 +63,14 @@ async function readRange(token: string, range: string): Promise<SheetRow[]> {
     throw await createGoogleApiError(response);
   }
 
-  const result = (await response.json()) as {
-    values?: SheetRow[];
-  };
-
+  const result = (await response.json()) as { values?: SheetRow[] };
   return result.values ?? [];
 }
 
 function getAssetType(symbol: string): AssetType {
   const normalized = normalize(symbol);
-
   if (normalized === "btc") return "crypto";
-
-  if (["voo", "qqq", "ivvpeso", "ivvpesoishrs"].includes(normalized)) {
-    return "etf";
-  }
-
+  if (["voo", "qqq", "ivvpeso", "ivvpesoishrs"].includes(normalized)) return "etf";
   return "stock";
 }
 
@@ -134,7 +90,6 @@ function makeInvestment(
   quantity = 1,
 ): Investment {
   const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
-
   return {
     id,
     symbol,
@@ -148,17 +103,16 @@ function makeInvestment(
 }
 
 function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
+  // The requested banking capital/value is defined explicitly by D10:D15 / E10:E15.
   return rows
-    .slice(1)
-    .filter((row) => normalize(row[0]) === "renta fija")
+    .slice(1, 7)
     .map((row, index) => {
-      const platform = String(row[2] ?? "").trim();
+      const rawPlatform = String(row[2] ?? "").trim();
       const invested = toNumber(row[3]);
       const currentValue = toNumber(row[4]);
-
-      if (!platform || (invested === 0 && currentValue === 0)) {
-        return null;
-      }
+      if (invested === 0 && currentValue === 0) return null;
+      // D10:D15 and E10:E15 are authoritative, even if a platform label is blank.
+      const platform = rawPlatform || `Cuenta bancaria ${index + 1}`;
 
       return {
         investment: makeInvestment(
@@ -176,36 +130,162 @@ function parseFixedIncome(rows: SheetRow[]): ParsedInvestment[] {
     .filter((item) => item !== null);
 }
 
-function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
-  const activeAssets = new Map<string, string>();
+type MovementProvider = "GBM" | "BITSO";
 
-  rows.forEach((row) => {
-    const symbol = normalize(row[0]);
-    const location = String(row[1] ?? "").trim();
-    const status = normalize(row[2]);
-
-    if (symbol && status === "activo") {
-      activeAssets.set(symbol, location || "Sin ubicación");
-    }
-  });
-
-  return activeAssets;
+function normalizeProvider(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  const normalized = normalize(raw);
+  if (normalized === "gbm") return "GBM";
+  if (normalized === "bitso") return "BITSO";
+  return raw;
 }
 
-function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
-  // A12:N27 contains the header followed by the current positions.
+function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
+  const assetLocations = new Map<string, string>();
+  rows.forEach((row) => {
+    const symbol = normalize(row[0]);
+    const location = normalizeProvider(row[1]);
+    // Portfolio locations are used to classify current holdings, not to infer movement origins.
+    if (symbol && location) assetLocations.set(symbol, location);
+  });
+  return assetLocations;
+}
+
+interface ProviderTotals {
+  GBM: number;
+  BITSO: number;
+  total: number;
+}
+
+interface NetInvestmentBreakdown extends ProviderTotals {
+  entries: ProviderTotals;
+  exits: ProviderTotals;
+  exitCommissions: ProviderTotals;
+}
+
+/**
+ * Capital neto invertido por plataforma.
+ * Entrada: suma L (Importe) + M (Comisión).
+ * Salida: resta L (Importe) menos M (Comisión), es decir, el efectivo neto retirado.
+ * Solo considera C (Tipo) = Entrada/Salida y O (Origen) = GBM/Bitso.
+ */
+function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBreakdown {
+  const netByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const entriesByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const exitsByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+  const exitCommissionsByProvider = new Map<MovementProvider, number>([
+    ["GBM", 0],
+    ["BITSO", 0],
+  ]);
+
+  rows.slice(1).forEach((row) => {
+    const direction = normalize(row[2]);
+    if (direction !== "entrada" && direction !== "salida") return;
+
+    const provider = normalizeProvider(row[14]);
+    if (provider !== "GBM" && provider !== "BITSO") return;
+
+    const amount = toNumber(row[11]);
+    const commission = toNumber(row[12]);
+
+    if (direction === "entrada") {
+      // Buying/investing increases capital by the amount plus its commission.
+      entriesByProvider.set(
+        provider,
+        (entriesByProvider.get(provider) ?? 0) + amount + commission,
+      );
+      netByProvider.set(
+        provider,
+        (netByProvider.get(provider) ?? 0) + amount + commission,
+      );
+      return;
+    }
+
+    // A sale reduces capital by the sale amount; its commission is an invested cost.
+    exitsByProvider.set(
+      provider,
+      (exitsByProvider.get(provider) ?? 0) + amount,
+    );
+    exitCommissionsByProvider.set(
+      provider,
+      (exitCommissionsByProvider.get(provider) ?? 0) + commission,
+    );
+    netByProvider.set(
+      provider,
+      (netByProvider.get(provider) ?? 0) - amount + commission,
+    );
+  });
+
+  const GBM = netByProvider.get("GBM") ?? 0;
+  const BITSO = netByProvider.get("BITSO") ?? 0;
+  const entriesGBM = entriesByProvider.get("GBM") ?? 0;
+  const entriesBITSO = entriesByProvider.get("BITSO") ?? 0;
+  const exitsGBM = exitsByProvider.get("GBM") ?? 0;
+  const exitsBITSO = exitsByProvider.get("BITSO") ?? 0;
+  const exitCommissionsGBM = exitCommissionsByProvider.get("GBM") ?? 0;
+  const exitCommissionsBITSO = exitCommissionsByProvider.get("BITSO") ?? 0;
+
+  return {
+    GBM,
+    BITSO,
+    total: GBM + BITSO,
+    entries: {
+      GBM: entriesGBM,
+      BITSO: entriesBITSO,
+      total: entriesGBM + entriesBITSO,
+    },
+    exits: {
+      GBM: exitsGBM,
+      BITSO: exitsBITSO,
+      total: exitsGBM + exitsBITSO,
+    },
+    exitCommissions: {
+      GBM: exitCommissionsGBM,
+      BITSO: exitCommissionsBITSO,
+      total: exitCommissionsGBM + exitCommissionsBITSO,
+    },
+  };
+}
+
+function parseVariableIncome(
+  rows: SheetRow[],
+  activeAssets: Map<string, string>,
+  portfolioControlRows: SheetRow[],
+): ParsedInvestment[] {
+  const activeSymbols = new Set(
+    portfolioControlRows
+      .filter((row) => normalize(row[2]) === "activo")
+      .map((row) => normalize(row[0]))
+      .filter(Boolean),
+  );
+
   return rows
     .slice(1)
     .map((row, index) => {
       const symbol = String(row[0] ?? "").trim();
+      const normalizedSymbol = normalize(symbol);
       const invested = toNumber(row[9]);
       const currentValue = toNumber(row[10]);
       const quantity = toNumber(row[7]);
       const dailyChangePercent = toNumber(row[4]) * 100;
+      const location = activeAssets.get(normalizedSymbol);
+      const provider = normalizeProvider(location);
 
       if (
         !symbol ||
-        ["total", "total general", "subtotal"].includes(normalize(symbol)) ||
+        ["total", "total general", "subtotal"].includes(normalizedSymbol) ||
+        !activeSymbols.has(normalizedSymbol) ||
+        !["GBM", "BITSO"].includes(provider) ||
+        quantity <= 0 ||
         (invested === 0 && currentValue === 0)
       ) {
         return null;
@@ -214,7 +294,7 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
       return {
         investment: {
           ...makeInvestment(
-            `variable-${index}-${symbol}`,
+            `variable-${index}-${normalizedSymbol}`,
             symbol.toUpperCase(),
             symbol.toUpperCase(),
             getAssetType(symbol),
@@ -222,6 +302,7 @@ function parseVariableIncome(rows: SheetRow[]): ParsedInvestment[] {
             currentValue,
             quantity,
           ),
+          location: provider,
           dailyChangePercent,
         },
         invested,
@@ -236,96 +317,100 @@ export async function getInvestmentSheetsData(
 ): Promise<InvestmentSheetsData> {
   const token = accessToken ?? (await signInWithGoogle());
 
-  const [investmentRows, variableRows, portfolioControlRows, gainSummaryRows] = await Promise.all([
+  const [investmentRows, variableRows, portfolioControlRows, movementRows] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
     readRange(token, "'Renta variable'!A12:N27"),
     readRange(token, "'Portfolio'!A2:C"),
-    readRange(token, "'Renta variable'!A9"),
+    readRange(token, "'Movimientos'!A1:O"),
   ]);
 
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
-  const variableIncomeFromSheets = parseVariableIncome(variableRows)
-    .filter((item) => activeAssets.has(normalize(item.investment.symbol)))
-    .map((item) => ({
-      ...item,
-      investment: {
-        ...item.investment,
-        location:
-          activeAssets.get(normalize(item.investment.symbol)) ?? "Sin ubicación",
-      },
-    }));
+  const movementNetInvestment = calculateNetInvestmentFromMovements(movementRows);
+  // Current values and per-position gains must match the GBM/Bitso portfolio
+  // data shown in Renta variable; Movimientos is used for net invested capital.
+  const variableIncome = parseVariableIncome(variableRows, activeAssets, portfolioControlRows);
 
-  // Google Sheets is the source of truth for variable-income values.
-  // Do not overwrite its formula-calculated values with a second market feed.
-  const variableIncome = variableIncomeFromSheets;
   const parsedInvestments = [...fixedIncome, ...variableIncome];
-
   if (parsedInvestments.length === 0) {
-    throw new Error(
-      "No se encontraron posiciones. Verifica los nombres de las hojas y sus columnas.",
-    );
+    throw new Error("No se encontraron posiciones. Verifica las hojas y sus columnas.");
   }
 
-  const invested = parsedInvestments.reduce(
-    (total, item) => total + item.invested,
-    0,
-  );
+  const fixedIncomeInvested = investmentRows
+    .slice(1, 7)
+    .reduce((total, row) => total + toNumber(row[3]), 0);
+  const invested = fixedIncomeInvested + movementNetInvestment.total;
 
-  const totalValue = parsedInvestments.reduce(
-    (total, item) => total + item.currentValue,
-    0,
-  );
+  // Build the summary from the same positions rendered by each portfolio tab.
+  // Current values and gains come from Renta variable / Inversiones, not from
+  // reconstructing today's holdings out of historic movement quantities.
+  const bankValue = fixedIncome.reduce((total, item) => total + item.currentValue, 0);
+  const gbmPositions = variableIncome.filter((item) => normalizeProvider(item.investment.location) === "GBM");
+  const bitsoPositions = variableIncome.filter((item) => normalizeProvider(item.investment.location) === "BITSO");
+  const gbmValue = gbmPositions.reduce((total, item) => total + item.currentValue, 0);
+  const bitsoValue = bitsoPositions.reduce((total, item) => total + item.currentValue, 0);
+  const totalValue = gbmValue + bitsoValue + bankValue;
 
-  // Calculate the total daily change from the percentage values in the sheet,
-  // weighted by each variable-income position's current value.
+  // Brokerage gains compare current market values against each provider's net invested capital.
+  const gbmGain = gbmValue - movementNetInvestment.GBM;
+  const bitsoGain = bitsoValue - movementNetInvestment.BITSO;
+  const bankGain = bankValue - fixedIncomeInvested;
+  const variableTotalGain = gbmGain + bitsoGain;
+  // Home's total gain must reconcile exactly to total wealth minus total invested capital.
+  const totalGain = totalValue - invested;
+
   const dailyChangeAmount = variableIncome.reduce((total, item) => {
     const dailyChangePercent = item.investment.dailyChangePercent;
-
-    if (
-      typeof dailyChangePercent !== "number" ||
-      !Number.isFinite(dailyChangePercent)
-    ) {
-      return total;
-    }
-
-    return total + item.currentValue * (dailyChangePercent / 100);
+    return typeof dailyChangePercent === "number" && Number.isFinite(dailyChangePercent)
+      ? total + item.currentValue * (dailyChangePercent / 100)
+      : total;
   }, 0);
-
-  const dailyChange = totalValue > 0
-    ? (dailyChangeAmount / totalValue) * 100
-    : 0;
-
-  const gainSummaryText = String(gainSummaryRows[0]?.[0] ?? "").trim();
-  const totalGain = parseGainSummaryAmount(gainSummaryText);
+  const dailyChange = totalValue > 0 ? (dailyChangeAmount / totalValue) * 100 : 0;
 
   const summary: PortfolioSummary = {
     invested,
     totalValue,
-    // Use the spreadsheet's gain summary so realized gains from sales are included.
     totalGain,
     dailyChange,
     currency: "MXN",
   };
 
-  console.table(
-    parsedInvestments.map((item) => ({
-      activo: item.investment.symbol,
-      invertido: item.invested,
-      valorActual: item.currentValue,
-      ganancia: item.currentValue - item.invested,
-    })),
-  );
-
-  console.log("RESUMEN CALCULADO", {
-    capitalInvertido: invested,
+  console.table(parsedInvestments.map((item) => ({
+    activo: item.investment.symbol,
+    titulos: item.investment.quantity,
+    costoVigente: item.invested,
+    valorActual: item.currentValue,
+    gananciaNoRealizada: item.currentValue - item.invested,
+  })));
+  console.log("DESGLOSE PATRIMONIO", {
+    GBM: gbmValue,
+    BITSO: bitsoValue,
+    BANCO: bankValue,
+    patrimonioEsperadoPorComponentes: gbmValue + bitsoValue + bankValue,
     patrimonioTotal: totalValue,
-    gananciaTotal: summary.totalGain,
+  });
+  console.log("DESGLOSE CAPITAL INVERTIDO", {
+    entradasGBM_ImporteMasComision: movementNetInvestment.entries.GBM,
+    salidasGBM_Importe: movementNetInvestment.exits.GBM,
+    comisionesSalidasGBM: movementNetInvestment.exitCommissions.GBM,
+    capitalNetoGBM: movementNetInvestment.GBM,
+    entradasBITSO_ImporteMasComision: movementNetInvestment.entries.BITSO,
+    salidasBITSO_Importe: movementNetInvestment.exits.BITSO,
+    comisionesSalidasBITSO: movementNetInvestment.exitCommissions.BITSO,
+    capitalNetoBITSO: movementNetInvestment.BITSO,
+    capitalNetoGBM_BITSO: movementNetInvestment.total,
+    capitalBancarioD10_D15: fixedIncomeInvested,
+    capitalInvertido: invested,
+  });
+  console.log("DESGLOSE GANANCIA TOTAL", {
+    gananciaGBM: gbmGain,
+    gananciaBITSO: bitsoGain,
+    gananciaBanco: bankGain,
+    gananciaTotal: totalGain,
     cantidadPosiciones: parsedInvestments.length,
   });
 
   let historyPoints: ChartPoint[] = [];
-
   try {
     await savePortfolioSnapshot(token, {
       invested: summary.invested,
@@ -347,7 +432,11 @@ export async function getInvestmentSheetsData(
   return {
     investments: parsedInvestments.map((item) => item.investment),
     summary,
+    netInvestedCapitalByProvider: {
+      GBM: movementNetInvestment.GBM,
+      BITSO: movementNetInvestment.BITSO,
+    },
     historyPoints,
-    gainSummaryText: gainSummaryText || undefined,
+    gainSummaryText: variableTotalGain.toFixed(2),
   };
 }

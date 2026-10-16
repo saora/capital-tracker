@@ -1,5 +1,5 @@
 import type { PortfolioViewModel, PortfolioPosition, PortfolioProvider } from './portfolio.types';
-import { formatCurrency, formatPercent } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 import { presentAssetLogo } from '../../components/asset-logo/asset-logo.presenter';
 import { renderAssetLogoTemplate } from '../../components/asset-logo/asset-logo.template';
 
@@ -78,12 +78,10 @@ export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
   }).join('');
 
   const currentValue = positions.reduce((total, position) => total + position.currentValue, 0);
-  const gain = positions.reduce((total, position) => total + position.gainValue, 0);
-  const invested = positions.reduce((total, position) => total + position.investedValue, 0);
-  const performance = invested > 0 ? (gain / invested) * 100 : 0;
-  const gainClass = gain >= 0 ? 'text-positive' : 'text-negative';
+  const gain = viewModel.totalGainValue;
+  const gainClass = viewModel.totalGainClass;
   const signedGainLabel = `${gain > 0 ? '+' : gain < 0 ? '-' : ''}${formatCurrencyAmount(gain, viewModel.currency)}`;
-  const performanceLabel = formatPercent(performance).replace(/^\+/, '');
+  const performanceLabel = viewModel.totalPerformanceLabel;
   const emptyMessage = viewModel.provider === 'BANCO'
     ? 'No hay activos bancarios registrados.'
     : `No hay posiciones registradas en ${viewModel.provider}.`;
@@ -116,6 +114,10 @@ export function renderPortfolioTemplate(viewModel: PortfolioViewModel): string {
       <header class="portfolio-filter-header portfolio-filter-header--outside">
         <h2 class="dashboard__section-title" id="portfolio-positions-title">Posiciones</h2>
         <span class="portfolio-location-card__count portfolio-location-card__count--dark" aria-label="${positions.length} posiciones">${positions.length}</span>
+        <span class="portfolio-filter-header__capital">
+          <span>Cap. invertido:</span>
+          <strong>${escapeHtml(formatCurrency(viewModel.totalInvestedValue, viewModel.currency))}</strong>
+        </span>
       </header>
       <section class="card portfolio-location-card" aria-labelledby="portfolio-positions-title">
         <div class="chart-periods portfolio-provider-filter" role="group" aria-label="Filtrar portafolio">

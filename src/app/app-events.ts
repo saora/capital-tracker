@@ -146,12 +146,20 @@ function updateInvestmentConceptOptions(form: HTMLFormElement, direction: "Entra
 function updateTradeTotal(form: HTMLFormElement): void {
   const amount = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="amount"]')?.value ?? "");
   const commission = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="commission"]')?.value ?? "0");
+  const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
   const totalInput = form.querySelector<HTMLInputElement>('input[name="total"]');
+  const totalLabel = form.querySelector<HTMLElement>('[data-trade-total-label]');
   if (!totalInput) return;
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   const safeCommission = Number.isFinite(commission) ? commission : 0;
+  const isSale = concept === "Venta";
+  // Purchases show total cost; sales show net proceeds after the sale commission.
+  const tradeTotal = isSale
+    ? safeAmount - safeCommission
+    : safeAmount + safeCommission;
+  if (totalLabel) totalLabel.textContent = isSale ? "Ingreso neto de venta" : "Costo total de compra";
   totalInput.value = safeAmount > 0 || safeCommission > 0
-    ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(safeAmount + safeCommission)
+    ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(tradeTotal)
     : "";
 }
 
@@ -424,13 +432,13 @@ export function initializeAppEvents(app: HTMLDivElement, handlers: AppEventHandl
     const token = getSessionAccessToken(); const status = target.querySelector<HTMLElement>("#movement-form-status"); const submitButton = target.querySelector<HTMLButtonElement>('button[type="submit"]'); const formData = new FormData(target);
     const date = String(formData.get("date") ?? "").trim(); const category = String(formData.get("category") ?? "") as "Cuenta bancaria" | "Acciones"; const concept = String(formData.get("concept") ?? "").trim(); const bankAccount = target.querySelector<HTMLSelectElement>("#movement-account"); const assetAccount = target.querySelector<HTMLSelectElement>("#movement-asset"); const selectedAccount = category === "Acciones" ? assetAccount?.value.trim() ?? "" : bankAccount?.value.trim() ?? ""; const amount = parseNumericInput(String(formData.get("amount") ?? "")); const commissionRaw = String(formData.get("commission") ?? "").trim(); const commissionParsed = commissionRaw ? parseNumericInput(commissionRaw) : 0; const commission = Number.isFinite(commissionParsed) ? commissionParsed : Number.NaN; const currencyRaw = String(formData.get("currency") ?? "MXN"); const currency = (currencyRaw === "USD" ? "USD" : "MXN") as "MXN" | "USD"; const notes = String(formData.get("notes") ?? "").trim(); const quantityRaw = String(formData.get("quantity") ?? "").trim(); const averageCostRaw = String(formData.get("averageCost") ?? "").trim(); const quantity = quantityRaw ? Number(quantityRaw) : undefined; const averageCostParsed = averageCostRaw ? parseNumericInput(averageCostRaw) : Number.NaN; const averageCost = averageCostRaw && Number.isFinite(averageCostParsed) ? averageCostParsed : undefined; const isTrade = category === "Acciones" && ["Compra", "Venta"].includes(concept); const isBuy = category === "Acciones" && concept === "Compra"; const selectedType = String(formData.get("type") ?? "");
     const type = category === "Cuenta bancaria" ? (concept === "Depósito" ? "Entrada" : "Salida") : (selectedType === "Entrada" || selectedType === "Salida" ? selectedType : getInvestmentDirection(concept));
-    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 || (isTrade && (!Number.isFinite(commission) || commission < 0)) || (isTrade && (quantity === undefined || !Number.isInteger(quantity) || quantity <= 0)) || (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0)) || (isBuy && !["GBM", "Bitso"].includes(String(formData.get("origin") ?? "")))) {
+    if (!token || !date || !selectedAccount || !concept || !Number.isFinite(amount) || amount <= 0 || (isTrade && (!Number.isFinite(commission) || commission < 0)) || (isTrade && (quantity === undefined || !Number.isInteger(quantity) || quantity <= 0)) || (isBuy && (averageCost === undefined || !Number.isFinite(averageCost) || averageCost <= 0)) || (category === "Acciones" && !["GBM", "Bitso"].includes(String(formData.get("origin") ?? "")))) {
       if (status) { status.textContent = "Revisa la fecha, la cuenta o activo, el concepto y los importes requeridos."; status.className = "movement-form__status movement-field--full is-error"; } return;
     }
     target.dataset.submitting = "true"; if (submitButton) submitButton.disabled = true; if (status) { status.textContent = "Guardando en Google Sheets…"; status.className = "movement-form__status movement-field--full"; }
     void (async () => {
       try {
-        const editId = target.dataset.editId; const originValue = String(formData.get("origin") ?? ""); const origin: MovementOrigin | undefined = originValue === "GBM" ? "GBM" : originValue === "Bitso" ? "Bitso" : undefined; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade ? { commission, currency } : { currency: "MXN" as const }), ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}), ...(isBuy && origin ? { origin } : {}) };
+        const editId = target.dataset.editId; const originValue = String(formData.get("origin") ?? ""); const origin: MovementOrigin | undefined = originValue === "GBM" ? "GBM" : originValue === "Bitso" ? "Bitso" : undefined; const savedMovement = { id: editId || crypto.randomUUID(), date, type: type as "Entrada" | "Salida", account: selectedAccount, category, amount, concept, notes, ...(isTrade ? { commission, currency } : { currency: "MXN" as const }), ...(isTrade && quantity !== undefined ? { quantity } : {}), ...(isBuy && averageCost !== undefined ? { averageCost } : {}), ...(category === "Acciones" && origin ? { origin } : {}) };
         if (editId) { await updateMovement(token, savedMovement); appState.movements = appState.movements.map((item) => item.id === editId ? savedMovement : item).sort((a, b) => b.date.localeCompare(a.date)); }
         else { await appendMovement(token, savedMovement); appState.movements = [savedMovement, ...appState.movements].sort((a, b) => b.date.localeCompare(a.date)); }
         try { appState.movements = await getMovements(token); } catch { /* append already confirmed; keep local record */ }

@@ -31,7 +31,10 @@ export interface PortfolioViewModel {
   positions: PortfolioPosition[];
   totalPositions: number;
   totalValueLabel: string;
+  totalInvestedValue: number;
   totalGainAmountLabel: string;
+  /** Aggregate gain based on provider entry capital, not per-position cost basis. */
+  totalGainValue: number;
   totalPerformanceLabel: string;
   totalGainClass: 'text-positive' | 'text-negative';
   currency: Currency;
