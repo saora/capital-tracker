@@ -245,18 +245,22 @@ export async function getInvestmentSheetsData(
     .slice(1, 7)
     .reduce((total, row) => total + toNumber(row[3]), 0);
   const invested = fixedIncomeInvested + netVariableInvestment.total;
-  const totalValue = parsedInvestments.reduce((total, item) => total + item.currentValue, 0);
-  // Match the gains displayed in the GBM, Bitso and bank portfolios:
-  // unrealized gains for open stock positions + accrued bank/fixed-income gains.
-  const variableTotalGain = variableIncome.reduce(
-    (total, item) => total + item.currentValue - item.invested,
-    0,
-  );
-  const fixedIncomeGain = fixedIncome.reduce(
-    (total, item) => total + item.currentValue - item.invested,
-    0,
-  );
-  const totalGain = variableTotalGain + fixedIncomeGain;
+
+  // Build the summary from the same positions rendered by each portfolio tab.
+  // Current values and gains come from Renta variable / Inversiones, not from
+  // reconstructing today's holdings out of historic movement quantities.
+  const bankValue = fixedIncome.reduce((total, item) => total + item.currentValue, 0);
+  const gbmPositions = variableIncome.filter((item) => normalizeProvider(item.investment.location) === "GBM");
+  const bitsoPositions = variableIncome.filter((item) => normalizeProvider(item.investment.location) === "BITSO");
+  const gbmValue = gbmPositions.reduce((total, item) => total + item.currentValue, 0);
+  const bitsoValue = bitsoPositions.reduce((total, item) => total + item.currentValue, 0);
+  const totalValue = gbmValue + bitsoValue + bankValue;
+
+  const gbmGain = gbmPositions.reduce((total, item) => total + item.currentValue - item.invested, 0);
+  const bitsoGain = bitsoPositions.reduce((total, item) => total + item.currentValue - item.invested, 0);
+  const bankGain = fixedIncome.reduce((total, item) => total + item.currentValue - item.invested, 0);
+  const variableTotalGain = gbmGain + bitsoGain;
+  const totalGain = gbmGain + bitsoGain + bankGain;
 
   const dailyChangeAmount = variableIncome.reduce((total, item) => {
     const dailyChangePercent = item.investment.dailyChangePercent;
@@ -281,12 +285,23 @@ export async function getInvestmentSheetsData(
     valorActual: item.currentValue,
     gananciaNoRealizada: item.currentValue - item.invested,
   })));
-  console.log("RESUMEN CALCULADO", {
-    capitalRentaFija: fixedIncomeInvested,
-    capitalNetoGBM: netVariableInvestment.GBM,
-    capitalNetoBitso: netVariableInvestment.BITSO,
-    capitalInvertido: invested,
+  console.log("DESGLOSE PATRIMONIO", {
+    GBM: gbmValue,
+    BITSO: bitsoValue,
+    BANCO: bankValue,
+    patrimonioEsperadoPorComponentes: gbmValue + bitsoValue + bankValue,
     patrimonioTotal: totalValue,
+  });
+  console.log("DESGLOSE CAPITAL INVERTIDO", {
+    capitalD10_D15: fixedIncomeInvested,
+    netoGBM: netVariableInvestment.GBM,
+    netoBITSO: netVariableInvestment.BITSO,
+    capitalInvertido: invested,
+  });
+  console.log("DESGLOSE GANANCIA TOTAL", {
+    gananciaGBM: gbmGain,
+    gananciaBITSO: bitsoGain,
+    gananciaBanco: bankGain,
     gananciaTotal: totalGain,
     cantidadPosiciones: parsedInvestments.length,
   });
