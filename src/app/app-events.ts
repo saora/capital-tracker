@@ -148,13 +148,16 @@ function updateTradeTotal(form: HTMLFormElement): void {
   const commission = parseNumericInput(form.querySelector<HTMLInputElement>('input[name="commission"]')?.value ?? "0");
   const concept = form.querySelector<HTMLSelectElement>('select[name="concept"]')?.value;
   const totalInput = form.querySelector<HTMLInputElement>('input[name="total"]');
+  const totalLabel = form.querySelector<HTMLElement>('[data-trade-total-label]');
   if (!totalInput) return;
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   const safeCommission = Number.isFinite(commission) ? commission : 0;
-  // Purchases require amount + buy fee; sales show cash proceeds after sale fee.
-  const tradeTotal = concept === "Venta"
+  const isSale = concept === "Venta";
+  // Purchases show total cost; sales show net proceeds after the sale commission.
+  const tradeTotal = isSale
     ? safeAmount - safeCommission
     : safeAmount + safeCommission;
+  if (totalLabel) totalLabel.textContent = isSale ? "Ingreso neto de venta" : "Costo total de compra";
   totalInput.value = safeAmount > 0 || safeCommission > 0
     ? new Intl.NumberFormat("es-MX", { style: "currency", currency: getMovementCurrency(form), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(tradeTotal)
     : "";
