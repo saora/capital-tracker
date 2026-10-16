@@ -57,6 +57,25 @@ function renderMovementPeriods(selected: MovementPeriod): string {
 export function renderMovement(movement: Movement): string {
   const incoming = movement.type === 'Entrada';
   const signedAmount = `${incoming ? '+' : '−'}${formatCurrency(movement.amount, movement.currency)}`;
+  const isTrade = ['Compra', 'Venta'].includes(movement.concept);
+  const isSale = movement.type === 'Salida' && movement.concept === 'Venta';
+  const tradeTotal = movement.concept === 'Venta'
+    ? movement.amount - (movement.commission ?? 0)
+    : movement.amount + (movement.commission ?? 0);
+  const realizedGainFacts = isSale
+    ? movement.realizedGainStatus === 'calculated' &&
+      typeof movement.realizedGain === 'number' &&
+      typeof movement.realizedCostBasis === 'number' &&
+      typeof movement.realizedNetProceeds === 'number'
+      ? [
+          `<div><span>Ingreso neto de venta</span><strong>${escapeHtml(formatCurrency(movement.realizedNetProceeds, movement.currency))}</strong></div>`,
+          `<div><span>Costo de los títulos vendidos</span><strong>${escapeHtml(formatCurrency(movement.realizedCostBasis, movement.currency))}</strong></div>`,
+          `<div><span>Ganancia realizada</span><strong class="movement-row__amount ${movement.realizedGain >= 0 ? 'is-incoming' : 'is-outgoing'}">${movement.realizedGain > 0 ? '+' : movement.realizedGain < 0 ? '−' : ''}${escapeHtml(formatCurrency(Math.abs(movement.realizedGain), movement.currency))}</strong></div>`,
+        ]
+      : [
+          `<div><span>Ganancia realizada</span><strong class="text-muted">No calculable: historial de compras insuficiente.</strong></div>`,
+        ]
+    : [];
   const facts = [
     `<div><span>Fecha</span><strong>${escapeHtml(formatDate(movement.date))}</strong></div>`,
     `<div><span>Tipo</span><strong>${escapeHtml(movement.type)}</strong></div>`,
@@ -64,9 +83,10 @@ export function renderMovement(movement: Movement): string {
     `<div><span>Concepto</span><strong>${escapeHtml(movement.concept || '—')}</strong></div>`,
     `<div><span>Importe</span><strong class="movement-row__amount ${incoming ? 'is-incoming' : 'is-outgoing'}">${escapeHtml(signedAmount)}</strong></div>`,
     ...(movement.commission !== undefined ? [`<div><span>Comisión</span><strong>${escapeHtml(formatCurrency(movement.commission, movement.currency))}</strong></div>`] : []),
-    ...(movement.commission !== undefined && ['Compra', 'Venta'].includes(movement.concept) ? [`<div><span>Total</span><strong>${escapeHtml(formatCurrency(movement.amount + movement.commission, movement.currency))}</strong></div>`] : []),
+    ...(isTrade ? [`<div><span>${movement.concept === 'Venta' ? 'Ingreso neto de venta' : 'Costo total de compra'}</span><strong>${escapeHtml(formatCurrency(tradeTotal, movement.currency))}</strong></div>`] : []),
     ...(movement.quantity !== undefined ? [`<div><span>Número de títulos</span><strong>${escapeHtml(String(movement.quantity))}</strong></div>`] : []),
     ...(movement.averageCost !== undefined ? [`<div><span>Costo promedio</span><strong>${escapeHtml(formatCurrency(movement.averageCost, movement.currency))}</strong></div>`] : []),
+    ...realizedGainFacts,
     ...(movement.origin ? [`<div><span>Origen</span><strong>${escapeHtml(movement.origin)}</strong></div>`] : []),
     ...(movement.notes ? [`<div class="movement-row__note"><span>Notas</span><strong>${escapeHtml(movement.notes)}</strong></div>`] : []),
   ].join('');
