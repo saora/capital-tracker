@@ -10,8 +10,8 @@ import {
 export interface InvestmentSheetsData {
   investments: Investment[];
   summary: PortfolioSummary;
-  /** Entry totals by brokerage, based only on Movimientos C/L/M/O. */
-  entryCapitalByProvider?: { GBM: number; BITSO: number };
+  /** Net invested capital by brokerage, based only on Movimientos C/L/M/O. */
+  netInvestedCapitalByProvider?: { GBM: number; BITSO: number };
   historyPoints: ChartPoint[];
   gainSummaryText?: string;
 }
@@ -158,32 +158,38 @@ interface NetInvestmentBreakdown {
 }
 
 /**
- * Capital para GBM y Bitso: suma únicamente movimientos con C = "Entrada"
- * y O (Origen) = "GBM" o "Bitso". Cada importe suma L (Importe) + M (Comisión).
- * No resta salidas, no infiere el origen desde Portfolio y no filtra por categoría.
+ * Capital neto invertido por plataforma.
+ * Entrada: suma L (Importe) + M (Comisión).
+ * Salida: resta L (Importe) menos M (Comisión), es decir, el efectivo neto retirado.
+ * Solo considera C (Tipo) = Entrada/Salida y O (Origen) = GBM/Bitso.
  */
-function calculateEntryInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBreakdown {
-  const entriesByProvider = new Map<MovementProvider, number>([
+function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBreakdown {
+  const netByProvider = new Map<MovementProvider, number>([
     ["GBM", 0],
     ["BITSO", 0],
   ]);
 
   rows.slice(1).forEach((row) => {
-    if (normalize(row[2]) !== "entrada") return;
+    const direction = normalize(row[2]);
+    if (direction !== "entrada" && direction !== "salida") return;
 
     const provider = normalizeProvider(row[14]);
     if (provider !== "GBM" && provider !== "BITSO") return;
 
     const amount = toNumber(row[11]);
     const commission = toNumber(row[12]);
-    entriesByProvider.set(
+    const signedAmount = direction === "entrada"
+      ? amount + commission
+      : -(amount - commission);
+
+    netByProvider.set(
       provider,
-      (entriesByProvider.get(provider) ?? 0) + amount + commission,
+      (netByProvider.get(provider) ?? 0) + signedAmount,
     );
   });
 
-  const GBM = entriesByProvider.get("GBM") ?? 0;
-  const BITSO = entriesByProvider.get("BITSO") ?? 0;
+  const GBM = netByProvider.get("GBM") ?? 0;
+  const BITSO = netByProvider.get("BITSO") ?? 0;
   return { GBM, BITSO, total: GBM + BITSO };
 }
 
@@ -257,7 +263,7 @@ export async function getInvestmentSheetsData(
 
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
-  const movementEntryInvestment = calculateEntryInvestmentFromMovements(movementRows);
+  const movementNetInvestment = calculateNetInvestmentFromMovements(movementRows);
   // Current values and per-position gains must match the GBM/Bitso portfolio
   // data shown in Renta variable; Movimientos is used for net invested capital.
   const variableIncome = parseVariableIncome(variableRows, activeAssets, portfolioControlRows);
@@ -270,7 +276,7 @@ export async function getInvestmentSheetsData(
   const fixedIncomeInvested = investmentRows
     .slice(1, 7)
     .reduce((total, row) => total + toNumber(row[3]), 0);
-  const invested = fixedIncomeInvested + movementEntryInvestment.total;
+  const invested = fixedIncomeInvested + movementNetInvestment.total;
 
   // Build the summary from the same positions rendered by each portfolio tab.
   // Current values and gains come from Renta variable / Inversiones, not from
@@ -282,9 +288,9 @@ export async function getInvestmentSheetsData(
   const bitsoValue = bitsoPositions.reduce((total, item) => total + item.currentValue, 0);
   const totalValue = gbmValue + bitsoValue + bankValue;
 
-  // Brokerage-level gains use the agreed cash-entry basis, not the holdings' cost column J.
-  const gbmGain = gbmValue - movementEntryInvestment.GBM;
-  const bitsoGain = bitsoValue - movementEntryInvestment.BITSO;
+  // Brokerage gains compare current market values against each provider's net invested capital.
+  const gbmGain = gbmValue - movementNetInvestment.GBM;
+  const bitsoGain = bitsoValue - movementNetInvestment.BITSO;
   const bankGain = bankValue - fixedIncomeInvested;
   const variableTotalGain = gbmGain + bitsoGain;
   // Home's total gain must reconcile exactly to total wealth minus total invested capital.
@@ -321,9 +327,9 @@ export async function getInvestmentSheetsData(
     patrimonioTotal: totalValue,
   });
   console.log("DESGLOSE CAPITAL INVERTIDO", {
-    entradasGBM_ImporteMasComision: movementEntryInvestment.GBM,
-    entradasBITSO_ImporteMasComision: movementEntryInvestment.BITSO,
-    totalEntradasGBM_BITSO: movementEntryInvestment.total,
+    capitalNetoGBM: movementNetInvestment.GBM,
+    capitalNetoBITSO: movementNetInvestment.BITSO,
+    capitalNetoGBM_BITSO: movementNetInvestment.total,
     capitalBancarioD10_D15: fixedIncomeInvested,
     capitalInvertido: invested,
   });
@@ -357,9 +363,9 @@ export async function getInvestmentSheetsData(
   return {
     investments: parsedInvestments.map((item) => item.investment),
     summary,
-    entryCapitalByProvider: {
-      GBM: movementEntryInvestment.GBM,
-      BITSO: movementEntryInvestment.BITSO,
+    netInvestedCapitalByProvider: {
+      GBM: movementNetInvestment.GBM,
+      BITSO: movementNetInvestment.BITSO,
     },
     historyPoints,
     gainSummaryText: variableTotalGain.toFixed(2),
