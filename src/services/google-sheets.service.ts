@@ -169,9 +169,8 @@ function parsePortfolioControl(rows: SheetRow[]): Map<string, string> {
 }
 
 /**
- * Reads the current quote from the existing valuation sheet, but derives
- * quantities, remaining cost basis and realized sale gains from Movimientos.
- * The movements sheet does not contain current market prices by itself.
+ * Reads current quotes from Renta variable and derives quantities/remaining
+ * cost basis from Movimientos, with each position assigned to its broker.
  */
 function parseCurrentPrices(rows: SheetRow[]): Map<string, { price: number; dailyChangePercent: number }> {
   const prices = new Map<string, { price: number; dailyChangePercent: number }>();
@@ -260,10 +259,16 @@ function parseMovementPositions(
  * Las comisiones de compra aumentan el capital aportado y las de venta
  * reducen el efectivo recuperado.
  */
+interface NetInvestmentBreakdown {
+  GBM: number;
+  BITSO: number;
+  total: number;
+}
+
 function calculateNetInvestmentFromMovements(
   rows: SheetRow[],
   assetLocations: Map<string, string>,
-): number {
+): NetInvestmentBreakdown {
   const netByProvider = new Map<MovementProvider, number>([
     ["GBM", 0],
     ["BITSO", 0],
@@ -300,7 +305,9 @@ function calculateNetInvestmentFromMovements(
     );
   }
 
-  return [...netByProvider.values()].reduce((total, value) => total + value, 0);
+  const GBM = netByProvider.get("GBM") ?? 0;
+  const BITSO = netByProvider.get("BITSO") ?? 0;
+  return { GBM, BITSO, total: GBM + BITSO };
 }
 
 export async function getInvestmentSheetsData(
@@ -362,7 +369,7 @@ export async function getInvestmentSheetsData(
   const fixedIncomeInvested = investmentRows
     .slice(1, 7)
     .reduce((total, row) => total + toNumber(row[3]), 0);
-  const invested = fixedIncomeInvested + netVariableInvestment;
+  const invested = fixedIncomeInvested + netVariableInvestment.total;
   const totalValue = parsedInvestments.reduce((total, item) => total + item.currentValue, 0);
   // Match the gains displayed in the GBM, Bitso and bank portfolios:
   // unrealized gains for open stock positions + accrued bank/fixed-income gains.
@@ -400,6 +407,9 @@ export async function getInvestmentSheetsData(
     gananciaNoRealizada: item.currentValue - item.invested,
   })));
   console.log("RESUMEN CALCULADO", {
+    capitalRentaFija: fixedIncomeInvested,
+    capitalNetoGBM: netVariableInvestment.GBM,
+    capitalNetoBitso: netVariableInvestment.BITSO,
     capitalInvertido: invested,
     patrimonioTotal: totalValue,
     gananciaTotal: totalGain,
