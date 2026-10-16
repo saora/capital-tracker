@@ -592,14 +592,14 @@
   align-items: baseline;
   gap: 0.3rem;
   margin-left: auto;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .portfolio-filter-header__capital strong {
-  color: var(--text-primary);
+  color: var(--color-text-primary);
   font-weight: 650;
 }
 
