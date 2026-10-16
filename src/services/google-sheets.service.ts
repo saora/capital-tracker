@@ -10,6 +10,8 @@ import {
 export interface InvestmentSheetsData {
   investments: Investment[];
   summary: PortfolioSummary;
+  /** Entry totals by brokerage, based only on Movimientos C/L/M/O. */
+  entryCapitalByProvider?: { GBM: number; BITSO: number };
   historyPoints: ChartPoint[];
   gainSummaryText?: string;
 }
@@ -280,11 +282,13 @@ export async function getInvestmentSheetsData(
   const bitsoValue = bitsoPositions.reduce((total, item) => total + item.currentValue, 0);
   const totalValue = gbmValue + bitsoValue + bankValue;
 
-  const gbmGain = gbmPositions.reduce((total, item) => total + item.currentValue - item.invested, 0);
-  const bitsoGain = bitsoPositions.reduce((total, item) => total + item.currentValue - item.invested, 0);
-  const bankGain = fixedIncome.reduce((total, item) => total + item.currentValue - item.invested, 0);
+  // Brokerage-level gains use the agreed cash-entry basis, not the holdings' cost column J.
+  const gbmGain = gbmValue - movementEntryInvestment.GBM;
+  const bitsoGain = bitsoValue - movementEntryInvestment.BITSO;
+  const bankGain = bankValue - fixedIncomeInvested;
   const variableTotalGain = gbmGain + bitsoGain;
-  const totalGain = gbmGain + bitsoGain + bankGain;
+  // Home's total gain must reconcile exactly to total wealth minus total invested capital.
+  const totalGain = totalValue - invested;
 
   const dailyChangeAmount = variableIncome.reduce((total, item) => {
     const dailyChangePercent = item.investment.dailyChangePercent;
@@ -353,6 +357,10 @@ export async function getInvestmentSheetsData(
   return {
     investments: parsedInvestments.map((item) => item.investment),
     summary,
+    entryCapitalByProvider: {
+      GBM: movementEntryInvestment.GBM,
+      BITSO: movementEntryInvestment.BITSO,
+    },
     historyPoints,
     gainSummaryText: variableTotalGain.toFixed(2),
   };
