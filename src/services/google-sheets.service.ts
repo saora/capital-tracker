@@ -258,8 +258,8 @@ function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBre
 
 /**
  * Rebuilds each position from purchase/sale movements using weighted-average cost.
- * Purchase commissions are added to basis; sale commissions reduce net proceeds
- * but do not change the remaining per-title cost basis.
+ * Commissions are excluded from each position's cost basis to better match the
+ * unrealized gain/return shown by the brokerage app.
  */
 interface MovementPositionLedger {
   quantity: number;
@@ -300,9 +300,9 @@ function calculatePositionsFromMovements(rows: SheetRow[]): Map<string, Movement
     const ledger = ledgers.get(key) ?? { quantity: 0, totalCost: 0 };
 
     if (isPurchase) {
-      if (amount <= 0 || commission < 0) return;
+      if (amount <= 0) return;
       ledger.quantity += quantity;
-      ledger.totalCost += amount + commission;
+      ledger.totalCost += amount;
     } else {
       if (ledger.quantity <= 0 || ledger.quantity + 1e-8 < quantity) {
         // Don't invent a cost basis if sales exceed recorded purchase history.
