@@ -281,7 +281,6 @@ function calculatePositionsFromMovements(rows: SheetRow[]): Map<string, Movement
     const concept = normalize(row[5]);
     const quantity = toNumber(row[9]);
     const amount = toNumber(row[11]);
-    const commission = toNumber(row[12]);
     const provider = normalizeProvider(row[14]);
 
     if (
