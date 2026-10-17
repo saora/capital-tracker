@@ -271,10 +271,44 @@ interface MovementPositionTotals {
   averageCost: number;
 }
 
+function getMovementTimestamp(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // Google Sheets returns dates as serial days when valueRenderOption is UNFORMATTED_VALUE.
+    return Date.UTC(1899, 11, 30) + value * 24 * 60 * 60 * 1000;
+  }
+
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const raw = value.trim();
+  const isoDate = raw.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+  if (isoDate) {
+    return Date.UTC(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
+  }
+  const localDate = raw.match(/^(\\d{1,2})[/-](\\d{1,2})[/-](\\d{4})$/);
+  if (localDate) {
+    return Date.UTC(Number(localDate[3]), Number(localDate[2]) - 1, Number(localDate[1]));
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function calculatePositionsFromMovements(rows: SheetRow[]): Map<string, MovementPositionTotals> {
   const ledgers = new Map<string, MovementPositionLedger>();
+  const datedRows = rows.slice(1).map((row, index) => ({
+    row,
+    index,
+    timestamp: getMovementTimestamp(row[1]),
+  }));
+  // Cost basis depends on transaction chronology, not the current row order in the sheet.
+  datedRows.sort((a, b) => {
+    if (a.timestamp !== undefined && b.timestamp !== undefined) {
+      return a.timestamp - b.timestamp || a.index - b.index;
+    }
+    if (a.timestamp !== undefined) return -1;
+    if (b.timestamp !== undefined) return 1;
+    return a.index - b.index;
+  });
 
-  rows.slice(1).forEach((row) => {
+  datedRows.forEach(({ row }) => {
     const direction = normalize(row[2]);
     const category = normalize(row[3]);
     const symbol = String(row[4] ?? "").trim();
