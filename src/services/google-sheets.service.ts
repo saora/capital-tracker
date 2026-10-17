@@ -279,11 +279,11 @@ function getMovementTimestamp(value: unknown): number | undefined {
 
   if (typeof value !== "string" || !value.trim()) return undefined;
   const raw = value.trim();
-  const isoDate = raw.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+  const isoDate = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (isoDate) {
     return Date.UTC(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]));
   }
-  const localDate = raw.match(/^(\\d{1,2})[/-](\\d{1,2})[/-](\\d{4})$/);
+  const localDate = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (localDate) {
     return Date.UTC(Number(localDate[3]), Number(localDate[2]) - 1, Number(localDate[1]));
   }
