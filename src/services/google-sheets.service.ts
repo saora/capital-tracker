@@ -257,20 +257,31 @@ function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBre
 }
 
 /**
- * Net number of titles per brokerage and investment from Movimientos.
- * Entrada + Compra adds titles; Salida + Venta subtracts them.
- * The brokerage and asset are both part of the key so identical tickers held
- * at GBM and Bitso are calculated independently.
+ * Rebuilds each position from purchase/sale movements using weighted-average cost.
+ * Purchase commissions are added to basis; sale commissions reduce net proceeds
+ * but do not change the remaining per-title cost basis.
  */
-function calculateTitleQuantitiesFromMovements(rows: SheetRow[]): Map<string, number> {
-  const quantities = new Map<string, number>();
+interface MovementPositionLedger {
+  quantity: number;
+  totalCost: number;
+}
+
+interface MovementPositionTotals {
+  quantity: number;
+  averageCost: number;
+}
+
+function calculatePositionsFromMovements(rows: SheetRow[]): Map<string, MovementPositionTotals> {
+  const ledgers = new Map<string, MovementPositionLedger>();
 
   rows.slice(1).forEach((row) => {
     const direction = normalize(row[2]);
     const category = normalize(row[3]);
-    const symbol = normalize(row[4]);
+    const symbol = String(row[4] ?? "").trim();
     const concept = normalize(row[5]);
     const quantity = toNumber(row[9]);
+    const amount = toNumber(row[11]);
+    const commission = toNumber(row[12]);
     const provider = normalizeProvider(row[14]);
 
     if (
@@ -279,35 +290,59 @@ function calculateTitleQuantitiesFromMovements(rows: SheetRow[]): Map<string, nu
       (provider !== "GBM" && provider !== "BITSO") ||
       !Number.isFinite(quantity) ||
       quantity <= 0
-    ) {
-      return;
-    }
+    ) return;
 
     const isPurchase = direction === "entrada" && concept === "compra";
     const isSale = direction === "salida" && concept === "venta";
     if (!isPurchase && !isSale) return;
 
-    const key = `${provider}::${symbol}`;
-    const signedQuantity = isPurchase ? quantity : -quantity;
-    quantities.set(key, (quantities.get(key) ?? 0) + signedQuantity);
+    const key = `${provider}::${normalize(symbol)}`;
+    const ledger = ledgers.get(key) ?? { quantity: 0, totalCost: 0 };
+
+    if (isPurchase) {
+      if (amount <= 0 || commission < 0) return;
+      ledger.quantity += quantity;
+      ledger.totalCost += amount + commission;
+    } else {
+      if (ledger.quantity <= 0 || ledger.quantity + 1e-8 < quantity) {
+        // Don't invent a cost basis if sales exceed recorded purchase history.
+        return;
+      }
+      const averageCost = ledger.totalCost / ledger.quantity;
+      ledger.quantity -= quantity;
+      ledger.totalCost -= averageCost * quantity;
+      if (ledger.quantity < 1e-8) {
+        ledger.quantity = 0;
+        ledger.totalCost = 0;
+      }
+    }
+
+    ledgers.set(key, ledger);
   });
 
-  return quantities;
+  const positions = new Map<string, MovementPositionTotals>();
+  ledgers.forEach((ledger, key) => {
+    positions.set(key, {
+      quantity: ledger.quantity,
+      averageCost: ledger.quantity > 0 ? ledger.totalCost / ledger.quantity : 0,
+    });
+  });
+  return positions;
 }
 
-function getMovementTitleQuantity(
-  quantities: Map<string, number>,
+function getMovementPosition(
+  positions: Map<string, MovementPositionTotals>,
   provider: string,
   symbol: string,
-): number | undefined {
-  return quantities.get(`${normalizeProvider(provider)}::${normalize(symbol)}`);
+): MovementPositionTotals | undefined {
+  return positions.get(`${normalizeProvider(provider)}::${normalize(symbol)}`);
 }
 
 function parseVariableIncome(
   rows: SheetRow[],
   activeAssets: Map<string, string>,
   portfolioControlRows: SheetRow[],
-  movementTitleQuantities: Map<string, number>,
+  movementPositions: Map<string, MovementPositionTotals>,
 ): ParsedInvestment[] {
   const activeSymbols = new Set(
     portfolioControlRows
@@ -321,16 +356,23 @@ function parseVariableIncome(
     .map((row, index) => {
       const symbol = String(row[0] ?? "").trim();
       const normalizedSymbol = normalize(symbol);
-      const invested = toNumber(row[9]);
-      const currentValue = toNumber(row[10]);
-      const sheetQuantity = toNumber(row[7]);
+      const sheetInvested = toNumber(row[9]);
+      const sheetCurrentValue = toNumber(row[10]);
+      const currentPrice = toNumber(row[2]); // Renta variable column C, rows 13:27
       const dailyChangePercent = toNumber(row[4]) * 100;
       const location = activeAssets.get(normalizedSymbol);
       const provider = normalizeProvider(location);
-      // Movimientos is authoritative whenever this investment has recorded buys/sells.
-      // Keep the sheet quantity only for legacy holdings with no matching movement history.
-      const quantity =
-        getMovementTitleQuantity(movementTitleQuantities, provider, symbol) ?? sheetQuantity;
+      const movementPosition = getMovementPosition(movementPositions, provider, symbol);
+      // Prefer the quantity and weighted-average cost reconstructed from Movimientos.
+      // Preserve legacy sheet values only when no movement history exists for this position.
+      const quantity = movementPosition?.quantity ?? toNumber(row[7]);
+      const averageCost = movementPosition?.averageCost ??
+        (quantity > 0 ? sheetInvested / quantity : 0);
+      const invested = quantity * averageCost;
+      const marketPrice = currentPrice > 0
+        ? currentPrice
+        : (quantity > 0 ? sheetCurrentValue / quantity : 0);
+      const currentValue = quantity * marketPrice;
 
       if (
         !symbol ||
@@ -354,6 +396,8 @@ function parseVariableIncome(
             currentValue,
             quantity,
           ),
+          averageCost,
+          currentPrice: marketPrice,
           location: provider,
           dailyChangePercent,
         },
@@ -379,14 +423,14 @@ export async function getInvestmentSheetsData(
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
   const movementNetInvestment = calculateNetInvestmentFromMovements(movementRows);
-  const movementTitleQuantities = calculateTitleQuantitiesFromMovements(movementRows);
-  // Market values still come from Renta variable; title counts come from Movimientos
-  // whenever buy/sell history exists for the GBM/Bitso investment.
+  const movementPositions = calculatePositionsFromMovements(movementRows);
+  // Renta variable column C supplies current market price; Movimientos supplies
+  // current title count and weighted-average acquisition cost per GBM/Bitso position.
   const variableIncome = parseVariableIncome(
     variableRows,
     activeAssets,
     portfolioControlRows,
-    movementTitleQuantities,
+    movementPositions,
   );
 
   const parsedInvestments = [...fixedIncome, ...variableIncome];
