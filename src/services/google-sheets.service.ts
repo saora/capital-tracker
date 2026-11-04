@@ -2,6 +2,7 @@ import { handleGoogleUnauthorized, signInWithGoogle } from "./google-auth.servic
 import { createGoogleApiError, GoogleApiError } from "./google-api-error.service";
 import type { Investment, AssetType } from "../types/investment";
 import type { PortfolioSummary, ChartPoint } from "../types/portfolio";
+import { getCatalog, type CatalogAssetType } from "./movements.service";
 import {
   savePortfolioSnapshot,
   getPortfolioHistory,
@@ -67,11 +68,17 @@ async function readRange(token: string, range: string): Promise<SheetRow[]> {
   return result.values ?? [];
 }
 
-function getAssetType(symbol: string): AssetType {
-  const normalized = normalize(symbol);
-  if (normalized === "btc") return "crypto";
-  if (["voo", "qqq", "ivvpeso", "ivvpesoishrs"].includes(normalized)) return "etf";
-  return "stock";
+function getAssetTypeFromCatalog(type: CatalogAssetType | undefined): AssetType | null {
+  switch (type) {
+    case "Accion":
+      return "stock";
+    case "ETF":
+      return "etf";
+    case "Crypto":
+      return "crypto";
+    default:
+      return null;
+  }
 }
 
 interface ParsedInvestment {
@@ -259,15 +266,8 @@ function calculateNetInvestmentFromMovements(rows: SheetRow[]): NetInvestmentBre
 function parseVariableIncome(
   rows: SheetRow[],
   activeAssets: Map<string, string>,
-  portfolioControlRows: SheetRow[],
+  catalogTypes: Map<string, CatalogAssetType>,
 ): ParsedInvestment[] {
-  const activeSymbols = new Set(
-    portfolioControlRows
-      .filter((row) => normalize(row[2]) === "activo")
-      .map((row) => normalize(row[0]))
-      .filter(Boolean),
-  );
-
   return rows
     .slice(1)
     .map((row, index) => {
@@ -277,13 +277,16 @@ function parseVariableIncome(
       const currentValue = toNumber(row[10]);
       const quantity = toNumber(row[7]);
       const dailyChangePercent = toNumber(row[4]) * 100;
+      const status = normalize(row[14]);
       const location = activeAssets.get(normalizedSymbol);
       const provider = normalizeProvider(location);
+      const assetType = getAssetTypeFromCatalog(catalogTypes.get(normalizedSymbol));
 
       if (
         !symbol ||
         ["total", "total general", "subtotal"].includes(normalizedSymbol) ||
-        !activeSymbols.has(normalizedSymbol) ||
+        status === "vendida" ||
+        !assetType ||
         !["GBM", "BITSO"].includes(provider) ||
         quantity <= 0 ||
         (invested === 0 && currentValue === 0)
@@ -297,7 +300,7 @@ function parseVariableIncome(
             `variable-${index}-${normalizedSymbol}`,
             symbol.toUpperCase(),
             symbol.toUpperCase(),
-            getAssetType(symbol),
+            assetType,
             invested,
             currentValue,
             quantity,
@@ -317,19 +320,23 @@ export async function getInvestmentSheetsData(
 ): Promise<InvestmentSheetsData> {
   const token = accessToken ?? (await signInWithGoogle());
 
-  const [investmentRows, variableRows, portfolioControlRows, movementRows] = await Promise.all([
+  const [investmentRows, variableRows, portfolioControlRows, movementRows, catalog] = await Promise.all([
     readRange(token, "'Inversiones'!A9:J"),
-    readRange(token, "'Renta variable'!A12:N27"),
+    readRange(token, "'Renta variable'!A12:P35"),
     readRange(token, "'Portfolio'!A2:C"),
     readRange(token, "'Movimientos'!A1:O"),
+    getCatalog(token),
   ]);
 
   const fixedIncome = parseFixedIncome(investmentRows);
   const activeAssets = parsePortfolioControl(portfolioControlRows);
+  const catalogTypes = new Map(
+    catalog.map((asset) => [normalize(asset.name), asset.type] as const),
+  );
   const movementNetInvestment = calculateNetInvestmentFromMovements(movementRows);
   // Current values and per-position gains must match the GBM/Bitso portfolio
   // data shown in Renta variable; Movimientos is used for net invested capital.
-  const variableIncome = parseVariableIncome(variableRows, activeAssets, portfolioControlRows);
+  const variableIncome = parseVariableIncome(variableRows, activeAssets, catalogTypes);
 
   const parsedInvestments = [...fixedIncome, ...variableIncome];
   if (parsedInvestments.length === 0) {
