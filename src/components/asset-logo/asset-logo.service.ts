@@ -18,6 +18,8 @@ const LOGO_TICKER: Record<string, string> = {
   VST: 'vst.svg',
   AVGO: 'avgo.svg',
   QQQ: 'qqq.svg',
+  GRAB: 'grab.svg',
+  PYPL: 'pypl.svg',
 };
 
 const LOGO_BANK: Record<string, string> = {
